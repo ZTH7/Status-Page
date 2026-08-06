@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.wrangler/
+.dev.vars
+.superpowers/
+.impeccable/questions/
+migration-backups/
+src/generated/
+public/theme-bootstrap.js
+
+.DS_Store

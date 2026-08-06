@@ -1,0 +1,35 @@
+title: Status Page
+url: https://status.zdaily.net
+logo: /logo.svg
+theme: default
+colorMode: system
+historyDays: 90
+rawRetentionDays: 90
+requestTimeoutSeconds: 10
+thresholds:
+  degradedAfterFailures: 2
+  outageAfterMinutes: 60
+  recoverAfterSuccesses: 2
+labels:
+  allOperational: All Systems Operational
+  someDegraded: Some Systems Are Degraded
+  someOutage: Some Systems Are Unavailable
+  statusUnknown: Status Is Temporarily Unknown
+  operational: Operational
+  degraded: Degraded
+  outage: Outage
+  noData: No data
+  searchPlaceholder: Search services
+  noServices: No services are configured.
+  noMatches: No services match your search.
+  recentIncidents: Recent incidents
+  noIncidents: No recent incidents.
+  lastChecked: Last checked
+  responseTime: Response time
+  location: Check location
+  historyStart: "{days} days ago"
+  today: Today
+  startedAt: First failure
+  escalatedAt: Outage began
+  recoveredAt: Recovered
+  ongoing: Ongoing

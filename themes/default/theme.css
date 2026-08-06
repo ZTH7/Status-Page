@@ -1,0 +1,473 @@
+/*
+THESIS: Public health readable in one scan; refuses ornamental dashboards.
+OWN-WORLD: Restrained neutral canvas, precise broad cards, semantic signal color,
+Geist typography, and one controlled elevation step.
+STORY: Overall state → search → services with live metadata and 90-day truth → real incidents.
+FIRST VIEWPORT: Compact identity/mode row, overall card, search, and the beginning of
+the first broad service card.
+FORM: Approved composition C, a single-column broad-card feed with no generated uptime.
+*/
+
+:root.theme-default {
+  color-scheme: light;
+  --canvas: #f6f7f9;
+  --surface: #ffffff;
+  --text: #18181b;
+  --muted: #71717a;
+  --border: #e4e4e7;
+  --focus-accent: #2563eb;
+  --status-operational-base: #16835f;
+  --status-degraded-base: #a16207;
+  --status-outage-base: #c2413b;
+  --status-unknown-base: #71717a;
+  --status-operational-foreground: #116a4e;
+  --status-operational-fill: #e8f7f0;
+  --status-degraded-foreground: #8b5505;
+  --status-degraded-fill: #fff4d6;
+  --status-outage-foreground: #aa342f;
+  --status-outage-fill: #fcebea;
+  --status-unknown-foreground: #5f5f68;
+  --status-unknown-fill: #f0f0f2;
+  --space-1: 8px;
+  --space-2: 12px;
+  --space-3: 16px;
+  --space-4: 24px;
+  --space-5: 32px;
+  --card-radius: 14px;
+  --elevated-shadow: 0 8px 24px rgb(0 0 0 / 8%);
+  --motion-standard: 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  background: var(--canvas);
+  color: var(--text);
+}
+
+:root.theme-default[data-color-mode='dark'] {
+  color-scheme: dark;
+  --canvas: #0f1115;
+  --surface: #17191f;
+  --text: #f4f4f5;
+  --muted: #a1a1aa;
+  --border: #2a2d35;
+  --focus-accent: #60a5fa;
+  --status-operational-foreground: #70e0b5;
+  --status-operational-fill: #15382e;
+  --status-degraded-foreground: #f5c451;
+  --status-degraded-fill: #3c2c13;
+  --status-outage-foreground: #ff9b94;
+  --status-outage-fill: #452423;
+  --status-unknown-foreground: #c4c4cb;
+  --status-unknown-fill: #2b2d34;
+}
+
+.theme-default body {
+  background: var(--canvas);
+  color: var(--text);
+  font-family: 'Geist Variable', system-ui, sans-serif;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.theme-default .app-shell {
+  background: var(--canvas);
+}
+
+.theme-default .site-header {
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--canvas) 92%, var(--surface));
+}
+
+.theme-default .site-identity h1 {
+  color: var(--text);
+  font-size: 1.125rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.theme-default .color-mode-toggle {
+  min-height: 40px;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+  transition:
+    border-color var(--motion-standard),
+    color var(--motion-standard),
+    box-shadow var(--motion-standard);
+}
+
+.theme-default .color-mode-toggle:hover {
+  border-color: var(--muted);
+  color: var(--text);
+}
+
+.theme-default .color-mode-toggle svg,
+.theme-default .service-search svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.75;
+}
+
+.theme-default .load-state,
+.theme-default .overall-status,
+.theme-default .service-search,
+.theme-default .service-card,
+.theme-default .incidents {
+  border: 1px solid var(--border);
+  border-radius: var(--card-radius);
+  background: var(--surface);
+}
+
+.theme-default .load-state,
+.theme-default .overall-status,
+.theme-default .service-card,
+.theme-default .incidents {
+  padding: var(--space-4);
+}
+
+.theme-default .load-state {
+  color: var(--muted);
+}
+
+.theme-default .load-state h2 {
+  margin-bottom: var(--space-1);
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.theme-default .load-state__indicator {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border);
+  border-top-color: var(--focus-accent);
+  border-radius: 50%;
+  animation: quiet-signal-spin 800ms linear infinite;
+}
+
+.theme-default .load-state__unknown {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--status-unknown-fill);
+  color: var(--status-unknown-foreground);
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+@keyframes quiet-signal-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.theme-default .overall-status__mark {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 48px;
+  border-radius: 50%;
+  color: white;
+}
+
+.theme-default .overall-status__mark svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.theme-default [data-level='operational'].overall-status__mark {
+  background: var(--status-operational-base);
+}
+
+.theme-default [data-level='degraded'].overall-status__mark {
+  background: var(--status-degraded-base);
+}
+
+.theme-default [data-level='outage'].overall-status__mark {
+  background: var(--status-outage-base);
+}
+
+.theme-default [data-level='unknown'].overall-status__mark {
+  background: var(--status-unknown-base);
+}
+
+.theme-default .overall-status h2 {
+  color: var(--text);
+  font-size: clamp(1.125rem, 2vw, 1.375rem);
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+.theme-default .overall-status__updated span,
+.theme-default .section-heading span,
+.theme-default .service-card__metadata dt,
+.theme-default .incident-list__timeline dt,
+.theme-default .history-strip__range,
+.theme-default .incident-list__duration {
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.theme-default .overall-status__updated time,
+.theme-default .service-card__metadata dd,
+.theme-default .incident-list__timeline dd {
+  color: var(--text);
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.theme-default .service-search {
+  min-height: 48px;
+  padding: 0 var(--space-3);
+  color: var(--muted);
+  transition:
+    border-color var(--motion-standard),
+    box-shadow var(--motion-standard);
+}
+
+.theme-default .service-search:focus-within {
+  border-color: var(--focus-accent);
+  box-shadow: 0 0 0 1px var(--focus-accent);
+}
+
+.theme-default .service-search input {
+  height: 46px;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+}
+
+.theme-default .service-search input::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+
+.theme-default .service-search kbd {
+  min-width: 24px;
+  padding: 2px var(--space-1);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--canvas);
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.theme-default .section-heading h2 {
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.theme-default .service-card {
+  box-shadow: none;
+  transition:
+    border-color var(--motion-standard),
+    box-shadow var(--motion-standard);
+}
+
+.theme-default .service-card:hover,
+.theme-default .service-card:focus-within {
+  border-color: color-mix(in srgb, var(--border) 40%, var(--muted));
+  box-shadow: var(--elevated-shadow);
+}
+
+.theme-default .service-card:has(.history-detail),
+.theme-default .service-card:focus-within {
+  z-index: 2;
+}
+
+.theme-default .service-card__fallback,
+.theme-default .service-card__logo {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--canvas);
+}
+
+.theme-default .service-card__fallback {
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.theme-default .service-card__title-block h3,
+.theme-default .incident-list__identity h3 {
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+.theme-default .service-card__title-block a {
+  text-decoration-color: var(--border);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.theme-default .service-card__title-block a:hover {
+  color: var(--focus-accent);
+  text-decoration-color: currentColor;
+}
+
+.theme-default .service-card__identity p {
+  max-width: 68ch;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.theme-default .status-badge {
+  width: fit-content;
+  gap: 6px;
+  min-height: 24px;
+  padding: 2px var(--space-1);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.theme-default .status-dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.theme-default [data-level='operational'].status-badge {
+  background: var(--status-operational-fill);
+  color: var(--status-operational-foreground);
+}
+
+.theme-default [data-level='degraded'].status-badge {
+  background: var(--status-degraded-fill);
+  color: var(--status-degraded-foreground);
+}
+
+.theme-default [data-level='outage'].status-badge {
+  background: var(--status-outage-fill);
+  color: var(--status-outage-foreground);
+}
+
+.theme-default [data-level='unknown'].status-badge {
+  background: var(--status-unknown-fill);
+  color: var(--status-unknown-foreground);
+}
+
+.theme-default .history-day {
+  background: transparent;
+}
+
+.theme-default .history-day > span {
+  border-radius: 2px;
+  background: var(--status-unknown-base);
+  transition: height var(--motion-standard);
+}
+
+.theme-default .history-day[data-level='operational'] > span {
+  background: var(--status-operational-base);
+}
+
+.theme-default .history-day[data-level='degraded'] > span {
+  background: var(--status-degraded-base);
+}
+
+.theme-default .history-day[data-level='outage'] > span {
+  background: var(--status-outage-base);
+}
+
+.theme-default .history-day:hover > span,
+.theme-default .history-day:focus-visible > span,
+.theme-default .history-day[aria-expanded='true'] > span {
+  height: 20px;
+}
+
+.theme-default .history-day:focus-visible {
+  outline: 0;
+  box-shadow: inset 0 0 0 2px var(--focus-accent);
+}
+
+.theme-default .history-detail {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.8125rem;
+  box-shadow: var(--elevated-shadow);
+}
+
+.theme-default .history-detail strong,
+.theme-default .history-detail time {
+  color: var(--text);
+}
+
+.theme-default .incidents {
+  padding-bottom: 0;
+}
+
+.theme-default .incident-list__item {
+  padding-block: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+
+.theme-default .incident-list__duration {
+  font-variant-numeric: tabular-nums;
+}
+
+.theme-default .empty-state {
+  padding: var(--space-4);
+  border: 1px dashed var(--border);
+  border-radius: var(--card-radius);
+  color: var(--muted);
+  text-align: center;
+}
+
+.theme-default .incidents > .empty-state {
+  margin: 0 calc(var(--space-4) * -1);
+  border-width: 1px 0 0;
+  border-radius: 0;
+}
+
+.theme-default .site-footer {
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.theme-default .site-footer a {
+  color: var(--text);
+  text-decoration-color: var(--border);
+  text-underline-offset: 3px;
+}
+
+.theme-default .site-footer a:hover {
+  color: var(--focus-accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-default *,
+  .theme-default *::before,
+  .theme-default *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

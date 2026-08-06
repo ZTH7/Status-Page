@@ -1,0 +1,29 @@
+monitors:
+  - id: blog
+    name: ZT Blog
+    url: https://www.zdaily.net/
+    method: GET
+    expectStatus: 200
+    followRedirect: false
+    linkable: true
+  - id: vault
+    name: VaultWarden
+    url: https://vault.zdaily.net/
+    method: GET
+    expectStatus: 200
+    followRedirect: false
+    linkable: true
+  - id: tools
+    name: IT Tools
+    url: https://tools.zdaily.net/
+    method: GET
+    expectStatus: 200
+    followRedirect: false
+    linkable: true
+  - id: alist
+    name: Drive
+    url: https://drive.zdaily.net/
+    method: GET
+    expectStatus: 200
+    followRedirect: false
+    linkable: true

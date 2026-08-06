@@ -1,0 +1,598 @@
+/*
+THESIS: A calm farmhouse status board: expressive landscape, disciplined data.
+OWN-WORLD: Original day/night pixel scenery with paper panels and timber frames.
+STORY: The shared status hierarchy remains unchanged inside an atmospheric world.
+FORM: Composition B environment with composition C card, logo, and state language.
+*/
+
+:root.theme-stardew-inspired {
+  color-scheme: light;
+  --farm-sky: #8dc9dc;
+  --timber: #6f4527;
+  --timber-dark: #432a1a;
+  --timber-light: #a66b38;
+  --paper: #fff4d1;
+  --paper-muted: #f2dfad;
+  --ink: #3f2d20;
+  --muted: #715c49;
+  --focus-accent: #174f88;
+  --lantern-gold: #f2b84b;
+  --status-operational-base: #2f6f3a;
+  --status-degraded-base: #8a4f00;
+  --status-outage-base: #a3342e;
+  --status-unknown-base: #68594b;
+  --status-operational-foreground: #24592f;
+  --status-operational-fill: #dcebcf;
+  --status-degraded-foreground: #704000;
+  --status-degraded-fill: #f5d691;
+  --status-outage-foreground: #862a26;
+  --status-outage-fill: #f3c7b9;
+  --status-unknown-foreground: #57493f;
+  --status-unknown-fill: #e1d4b4;
+  --font-display: 'Pixelify Sans Variable', ui-rounded, sans-serif;
+  --font-data: 'Geist Variable', system-ui, sans-serif;
+  --space-1: 8px;
+  --space-2: 12px;
+  --space-3: 16px;
+  --space-4: 24px;
+  --pixel-shadow: 4px 4px 0 var(--timber-dark);
+  --pixel-shadow-raised: 6px 6px 0 var(--timber-dark);
+  --motion-step: 150ms steps(2, end);
+  background: var(--farm-sky);
+  color: var(--ink);
+}
+
+:root.theme-stardew-inspired[data-color-mode='dark'] {
+  color-scheme: dark;
+  --farm-sky: #182f48;
+  --timber: #825638;
+  --timber-dark: #2d201a;
+  --timber-light: #b77b46;
+  --paper: #eadfbd;
+  --paper-muted: #cfc198;
+  --ink: #2b2119;
+  --muted: #655342;
+  --focus-accent: #236da8;
+  --status-operational-fill: #c8ddb9;
+  --status-degraded-fill: #eacb84;
+  --status-outage-fill: #e8b6aa;
+  --status-unknown-fill: #cfc2a4;
+}
+
+.theme-stardew-inspired body {
+  background: var(--farm-sky);
+  color: var(--ink);
+  font-family: var(--font-data);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.theme-stardew-inspired .app-shell {
+  position: relative;
+  z-index: 0;
+  isolation: isolate;
+  background: transparent;
+}
+
+.theme-stardew-inspired .theme-decoration--start {
+  position: fixed;
+  z-index: -1;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.theme-stardew-inspired .stardew-environment {
+  position: absolute;
+  inset: 0;
+  display: block;
+  background-color: var(--farm-sky);
+  background-image: url('./assets/farm-day-desktop.webp');
+  background-position: center;
+  background-size: cover;
+}
+
+:root.theme-stardew-inspired[data-color-mode='dark'] .stardew-environment {
+  background-image: url('./assets/farm-night-desktop.webp');
+}
+
+.theme-stardew-inspired .site-header,
+.theme-stardew-inspired .site-footer {
+  border-block: 4px solid var(--timber-dark);
+  background: var(--timber);
+  color: var(--paper);
+  box-shadow: inset 0 3px 0 var(--timber-light);
+}
+
+.theme-stardew-inspired .site-header {
+  border-top: 0;
+}
+
+.theme-stardew-inspired .site-footer {
+  border-bottom: 0;
+}
+
+.theme-stardew-inspired .site-identity h1,
+.theme-stardew-inspired .section-heading h2,
+.theme-stardew-inspired .service-card__title-block h3,
+.theme-stardew-inspired .incident-list__identity h3,
+.theme-stardew-inspired .status-badge,
+.theme-stardew-inspired .load-state h2 {
+  font-family: var(--font-display);
+}
+
+.theme-stardew-inspired .site-identity h1 {
+  color: var(--paper);
+  font-size: 1.375rem;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  line-height: 1.1;
+  text-shadow: 2px 2px 0 var(--timber-dark);
+}
+
+.theme-stardew-inspired .service-card__metadata,
+.theme-stardew-inspired .history-strip,
+.theme-stardew-inspired .incident-list,
+.theme-stardew-inspired .overall-status__updated,
+.theme-stardew-inspired .site-footer,
+.theme-stardew-inspired .service-card__identity p {
+  font-family: var(--font-data);
+}
+
+.theme-stardew-inspired .color-mode-toggle {
+  min-height: 42px;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border: 3px solid var(--timber-dark);
+  border-radius: 4px;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 2px 2px 0 var(--timber-dark);
+  cursor: pointer;
+  font-family: var(--font-display);
+  transition:
+    transform var(--motion-step),
+    box-shadow var(--motion-step);
+}
+
+.theme-stardew-inspired .color-mode-toggle:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 var(--timber-dark);
+}
+
+.theme-stardew-inspired .color-mode-toggle svg,
+.theme-stardew-inspired .service-search svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+  stroke-width: 2;
+}
+
+.theme-stardew-inspired .load-state,
+.theme-stardew-inspired .overall-status,
+.theme-stardew-inspired .service-search,
+.theme-stardew-inspired .service-card,
+.theme-stardew-inspired .incidents {
+  border: 4px solid var(--timber);
+  border-radius: 3px;
+  outline: 2px solid var(--timber-dark);
+  outline-offset: -2px;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: var(--pixel-shadow);
+}
+
+.theme-stardew-inspired .load-state,
+.theme-stardew-inspired .overall-status,
+.theme-stardew-inspired .service-card,
+.theme-stardew-inspired .incidents {
+  padding: var(--space-4);
+}
+
+.theme-stardew-inspired .load-state {
+  color: var(--muted);
+}
+
+.theme-stardew-inspired .load-state h2 {
+  margin-bottom: var(--space-1);
+  color: var(--ink);
+  font-size: 1.125rem;
+}
+
+.theme-stardew-inspired .load-state__indicator {
+  width: 18px;
+  height: 18px;
+  border: 4px solid var(--paper-muted);
+  border-top-color: var(--focus-accent);
+  border-radius: 2px;
+  animation: farm-signal-spin 800ms steps(4, end) infinite;
+}
+
+@keyframes farm-signal-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.theme-stardew-inspired .load-state__unknown,
+.theme-stardew-inspired .overall-status__mark {
+  display: grid;
+  place-items: center;
+  border: 3px solid var(--timber-dark);
+  border-radius: 3px;
+  color: #fff8de;
+  box-shadow: 2px 2px 0 var(--timber-dark);
+}
+
+.theme-stardew-inspired .load-state__unknown {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  background: var(--status-unknown-base);
+  font-family: var(--font-display);
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.theme-stardew-inspired .overall-status__mark {
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+}
+
+.theme-stardew-inspired .overall-status__mark svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+  stroke-width: 2;
+}
+
+.theme-stardew-inspired [data-level='operational'].overall-status__mark {
+  background: var(--status-operational-base);
+}
+
+.theme-stardew-inspired [data-level='degraded'].overall-status__mark {
+  background: var(--status-degraded-base);
+}
+
+.theme-stardew-inspired [data-level='outage'].overall-status__mark {
+  background: var(--status-outage-base);
+}
+
+.theme-stardew-inspired [data-level='unknown'].overall-status__mark {
+  background: var(--status-unknown-base);
+}
+
+.theme-stardew-inspired .overall-status h2 {
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: clamp(1.25rem, 2.5vw, 1.625rem);
+  font-weight: 650;
+  line-height: 1.15;
+}
+
+.theme-stardew-inspired .overall-status__updated span,
+.theme-stardew-inspired .section-heading span,
+.theme-stardew-inspired .service-card__metadata dt,
+.theme-stardew-inspired .incident-list__timeline dt,
+.theme-stardew-inspired .history-strip__range,
+.theme-stardew-inspired .incident-list__duration {
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.theme-stardew-inspired .overall-status__updated time,
+.theme-stardew-inspired .service-card__metadata dd,
+.theme-stardew-inspired .incident-list__timeline dd {
+  color: var(--ink);
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.theme-stardew-inspired .service-search {
+  min-height: 52px;
+  padding: 0 var(--space-3);
+  color: var(--muted);
+  transition:
+    border-color var(--motion-step),
+    box-shadow var(--motion-step);
+}
+
+.theme-stardew-inspired .service-search:focus-within {
+  border-color: var(--focus-accent);
+  box-shadow:
+    var(--pixel-shadow),
+    0 0 0 3px var(--focus-accent);
+}
+
+.theme-stardew-inspired .service-search input {
+  height: 48px;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--font-data);
+}
+
+.theme-stardew-inspired .service-search input::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+
+.theme-stardew-inspired .service-search kbd {
+  min-width: 26px;
+  padding: 1px var(--space-1);
+  border: 2px solid var(--timber);
+  border-radius: 2px;
+  background: var(--paper-muted);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.theme-stardew-inspired .section-heading {
+  width: fit-content;
+  min-width: min(100%, 20rem);
+  padding: 8px 12px;
+  border: 3px solid var(--timber-dark);
+  border-radius: 2px;
+  background: var(--timber);
+  color: var(--paper);
+  box-shadow: 3px 3px 0 var(--timber-dark);
+}
+
+.theme-stardew-inspired .section-heading h2,
+.theme-stardew-inspired .section-heading span {
+  color: var(--paper);
+}
+
+.theme-stardew-inspired .section-heading h2 {
+  font-size: 1.125rem;
+  font-weight: 650;
+}
+
+.theme-stardew-inspired .service-card {
+  border-width: 4px;
+  box-shadow: var(--pixel-shadow);
+  transition:
+    transform var(--motion-step),
+    box-shadow var(--motion-step),
+    border-color var(--motion-step);
+}
+
+.theme-stardew-inspired .service-card:hover,
+.theme-stardew-inspired .service-card:focus-within {
+  z-index: 2;
+  transform: translate(-2px, -2px);
+  border-color: var(--timber-light);
+  box-shadow: var(--pixel-shadow-raised);
+}
+
+.theme-stardew-inspired .service-card:has(.history-detail) {
+  z-index: 3;
+}
+
+.theme-stardew-inspired .service-card__fallback,
+.theme-stardew-inspired .service-card__logo {
+  border: 3px solid var(--timber-dark);
+  border-radius: 2px;
+  background: var(--paper-muted);
+  box-shadow: 2px 2px 0 var(--timber);
+}
+
+.theme-stardew-inspired .service-card__fallback {
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.theme-stardew-inspired .service-card__title-block h3,
+.theme-stardew-inspired .incident-list__identity h3 {
+  color: var(--ink);
+  font-size: 1.125rem;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.theme-stardew-inspired .service-card__title-block a {
+  text-decoration-color: var(--timber-light);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+.theme-stardew-inspired .service-card__title-block a:hover {
+  color: var(--focus-accent);
+  text-decoration-color: currentColor;
+}
+
+.theme-stardew-inspired .service-card__identity p {
+  max-width: 68ch;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.theme-stardew-inspired .status-badge {
+  width: fit-content;
+  gap: 6px;
+  min-height: 26px;
+  padding: 2px 9px;
+  border: 2px solid currentColor;
+  border-radius: 3px;
+  font-size: 0.8125rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.theme-stardew-inspired .status-dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 1px;
+  background: currentColor;
+}
+
+.theme-stardew-inspired [data-level='operational'].status-badge {
+  background: var(--status-operational-fill);
+  color: var(--status-operational-foreground);
+}
+
+.theme-stardew-inspired [data-level='degraded'].status-badge {
+  background: var(--status-degraded-fill);
+  color: var(--status-degraded-foreground);
+}
+
+.theme-stardew-inspired [data-level='outage'].status-badge {
+  background: var(--status-outage-fill);
+  color: var(--status-outage-foreground);
+}
+
+.theme-stardew-inspired [data-level='unknown'].status-badge {
+  background: var(--status-unknown-fill);
+  color: var(--status-unknown-foreground);
+}
+
+.theme-stardew-inspired .history-day {
+  background: transparent;
+}
+
+.theme-stardew-inspired .history-day > span {
+  border: 1px solid var(--timber-dark);
+  border-radius: 1px;
+  background: var(--status-unknown-base);
+  transition: height var(--motion-step);
+}
+
+.theme-stardew-inspired .history-day[data-level='operational'] > span {
+  background: var(--status-operational-base);
+}
+
+.theme-stardew-inspired .history-day[data-level='degraded'] > span {
+  background: var(--status-degraded-base);
+}
+
+.theme-stardew-inspired .history-day[data-level='outage'] > span {
+  background: var(--status-outage-base);
+}
+
+.theme-stardew-inspired .history-day:hover > span,
+.theme-stardew-inspired .history-day:focus-visible > span,
+.theme-stardew-inspired .history-day[aria-expanded='true'] > span {
+  height: 20px;
+}
+
+.theme-stardew-inspired .history-day:focus-visible {
+  outline: 3px solid var(--focus-accent);
+  outline-offset: -2px;
+}
+
+.theme-stardew-inspired .history-detail {
+  border: 3px solid var(--timber);
+  border-radius: 2px;
+  background: var(--paper);
+  color: var(--muted);
+  font-size: 0.8125rem;
+  box-shadow: var(--pixel-shadow);
+}
+
+.theme-stardew-inspired .history-detail strong,
+.theme-stardew-inspired .history-detail time {
+  color: var(--ink);
+}
+
+.theme-stardew-inspired .incidents {
+  padding-bottom: 0;
+}
+
+.theme-stardew-inspired .incident-list__item {
+  padding-block: var(--space-3);
+  border-top: 2px solid var(--paper-muted);
+}
+
+.theme-stardew-inspired .incident-list__duration {
+  font-variant-numeric: tabular-nums;
+}
+
+.theme-stardew-inspired .empty-state {
+  padding: var(--space-4);
+  border: 3px dashed var(--timber);
+  border-radius: 2px;
+  background: var(--paper);
+  color: var(--muted);
+  box-shadow: var(--pixel-shadow);
+  text-align: center;
+}
+
+.theme-stardew-inspired .incidents > .empty-state {
+  margin: 0 calc(var(--space-4) * -1);
+  border-width: 2px 0 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.theme-stardew-inspired .site-footer {
+  font-size: 0.8125rem;
+}
+
+.theme-stardew-inspired .site-footer a {
+  color: var(--paper);
+  text-decoration-color: var(--timber-light);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+.theme-stardew-inspired .site-footer a:hover {
+  color: #fff8de;
+}
+
+.theme-stardew-inspired :where(a, button, input):focus-visible {
+  outline: 3px solid var(--focus-accent);
+  outline-offset: 3px;
+}
+
+@media (max-width: 45rem) {
+  .theme-stardew-inspired .stardew-environment {
+    background-image: url('./assets/farm-day-mobile.webp');
+  }
+
+  :root.theme-stardew-inspired[data-color-mode='dark'] .stardew-environment {
+    background-image: url('./assets/farm-night-mobile.webp');
+  }
+
+  .theme-stardew-inspired .load-state,
+  .theme-stardew-inspired .overall-status,
+  .theme-stardew-inspired .service-card,
+  .theme-stardew-inspired .incidents {
+    padding: var(--space-3);
+  }
+
+  .theme-stardew-inspired .section-heading {
+    width: 100%;
+  }
+
+  .theme-stardew-inspired .incidents > .empty-state {
+    margin: 0 calc(var(--space-3) * -1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-stardew-inspired *,
+  .theme-stardew-inspired *::before,
+  .theme-stardew-inspired *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+
+  .theme-stardew-inspired .service-card:hover,
+  .theme-stardew-inspired .service-card:focus-within,
+  .theme-stardew-inspired .color-mode-toggle:hover {
+    transform: none;
+  }
+}

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-label="Status Page">
+  <title>Status Page</title>
+  <rect x="2" y="2" width="44" height="44" rx="12" fill="#18181b" />
+  <path d="M21 15.5h15M21 24h10M21 32.5h15" fill="none" stroke="#f4f4f5" stroke-width="3" stroke-linecap="round" opacity="0.92" />
+  <circle cx="14" cy="15.5" r="3.5" fill="#60a5fa" />
+  <circle cx="14" cy="24" r="3.5" fill="#60a5fa" />
+  <circle cx="14" cy="32.5" r="3.5" fill="#60a5fa" />
+</svg>
