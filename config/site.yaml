@@ -4,8 +4,8 @@ logo: /logo.svg
 theme: default
 colorMode: system
 historyDays: 90
-rawRetentionDays: 90
 requestTimeoutSeconds: 10
+userAgent: StatusPage/2
 thresholds:
   degradedAfterFailures: 2
   outageAfterMinutes: 60

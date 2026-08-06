@@ -1,61 +1,24 @@
-import { motion, useReducedMotion } from 'motion/react'
-import { useState } from 'react'
-
-import type { PublicLabels } from '../../config/types'
-import type { PublicMonitor } from '../../shared/api-types'
-import { HistoryStrip } from './HistoryStrip'
-import { StatusBadge } from './StatusBadge'
+import type { PublicLabels } from "../../config/types";
+import type { PublicMonitor } from "../../shared/api-types";
+import { formatTimestamp } from "../lib/format";
+import { HistoryStrip } from "./HistoryStrip";
+import { StatusBadge } from "./StatusBadge";
 
 interface ServiceCardProps {
-  monitor: PublicMonitor
-  labels: PublicLabels
+  monitor: PublicMonitor;
+  labels: PublicLabels;
 }
 
 function firstGrapheme(value: string): string {
-  const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' })
-  return (
-    Array.from(segmenter.segment(value.trim()), ({ segment }) => segment)[0] ??
-    '?'
-  )
-}
-
-function formatTimestamp(timestamp: number): string {
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(timestamp))
+  const segmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+  return Array.from(segmenter.segment(value.trim()), ({ segment }) => segment)[0] ?? "?";
 }
 
 export function ServiceCard({ monitor, labels }: ServiceCardProps) {
-  const shouldReduceMotion = useReducedMotion() ?? false
-  const [hovered, setHovered] = useState(false)
-  const [focusWithin, setFocusWithin] = useState(false)
-  const lifted = hovered || focusWithin
-  const latest = monitor.latest
+  const latest = monitor.latest;
 
   return (
-    <motion.article
-      className="service-card"
-      aria-label={monitor.name}
-      data-level={monitor.level}
-      data-motion={shouldReduceMotion ? 'reduced' : 'full'}
-      data-lifted={String(lifted)}
-      initial={shouldReduceMotion ? false : { opacity: 0.96, y: 2 }}
-      animate={{ opacity: 1, y: shouldReduceMotion ? 0 : lifted ? -2 : 0 }}
-      transition={{ duration: 0.16, ease: [0.2, 0.8, 0.2, 1] }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      onFocusCapture={() => setFocusWithin(true)}
-      onBlurCapture={(event) => {
-        const nextTarget = event.relatedTarget
-        if (
-          !(nextTarget instanceof Node) ||
-          !event.currentTarget.contains(nextTarget)
-        ) {
-          setFocusWithin(false)
-        }
-      }}
-    >
+    <article className="service-card" aria-label={monitor.name} data-level={monitor.level}>
       <div className="service-card__identity">
         <div className="service-card__name-row">
           {monitor.presentationLogo ? (
@@ -76,13 +39,7 @@ export function ServiceCard({ monitor, labels }: ServiceCardProps) {
             </span>
           )}
           <div className="service-card__title-block">
-            <h3>
-              {monitor.href ? (
-                <a href={monitor.href}>{monitor.name}</a>
-              ) : (
-                monitor.name
-              )}
-            </h3>
+            <h3>{monitor.href ? <a href={monitor.href}>{monitor.name}</a> : monitor.name}</h3>
             <StatusBadge level={monitor.level} labels={labels} />
           </div>
         </div>
@@ -93,9 +50,7 @@ export function ServiceCard({ monitor, labels }: ServiceCardProps) {
         <div>
           <dt>{labels.responseTime}</dt>
           <dd>
-            {latest?.responseMs === null || !latest
-              ? labels.noData
-              : `${latest.responseMs} ms`}
+            {latest?.responseMs === null || !latest ? labels.noData : `${latest.responseMs} ms`}
           </dd>
         </div>
         <div>
@@ -121,6 +76,6 @@ export function ServiceCard({ monitor, labels }: ServiceCardProps) {
       </dl>
 
       <HistoryStrip days={monitor.history} labels={labels} />
-    </motion.article>
-  )
+    </article>
+  );
 }

@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       deploy:
-        description: Deploy CFStatusPage to production after verification
+        description: Deploy Status Page to production after verification
         required: true
         type: boolean
         default: false

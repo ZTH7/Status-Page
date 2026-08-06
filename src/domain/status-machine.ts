@@ -126,7 +126,11 @@ function transitionIncident(
           firstFailedAt: null,
           latest: result,
         },
-        incident: { type: "recover", incidentId: incidentId(result.monitorId, firstFailedAt), recoveredAt: result.checkedAt },
+        incident: {
+          type: "recover",
+          incidentId: incidentId(result.monitorId, firstFailedAt),
+          recoveredAt: result.checkedAt,
+        },
         notification: { type: "recovery", monitorId: result.monitorId, at: result.checkedAt },
         dailySeverity: "operational",
         stale: false,
@@ -153,13 +157,17 @@ function transitionIncident(
   };
 
   if (
-    previous.level === "degraded"
-    && result.checkedAt - firstFailedAt >= thresholds.outageAfterMinutes * 60_000
+    previous.level === "degraded" &&
+    result.checkedAt - firstFailedAt >= thresholds.outageAfterMinutes * 60_000
   ) {
     next.level = "outage";
     return {
       next,
-      incident: { type: "escalate", incidentId: incidentId(result.monitorId, firstFailedAt), outageAt: result.checkedAt },
+      incident: {
+        type: "escalate",
+        incidentId: incidentId(result.monitorId, firstFailedAt),
+        outageAt: result.checkedAt,
+      },
       notification: null,
       dailySeverity: "outage",
       stale: false,

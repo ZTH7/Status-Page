@@ -1,22 +1,13 @@
 interface SearchFieldProps {
-  query: string
-  placeholder: string
-  inputRef: React.RefObject<HTMLInputElement | null>
-  onQueryChange(query: string): void
+  query: string;
+  placeholder: string;
+  inputRef: React.RefObject<HTMLInputElement | null>;
+  onQueryChange(query: string): void;
 }
 
-export function SearchField({
-  query,
-  placeholder,
-  inputRef,
-  onQueryChange,
-}: SearchFieldProps) {
+export function SearchField({ query, placeholder, inputRef, onQueryChange }: SearchFieldProps) {
   return (
-    <form
-      className="service-search"
-      role="search"
-      onSubmit={(event) => event.preventDefault()}
-    >
+    <form className="service-search" role="search" onSubmit={(event) => event.preventDefault()}>
       <label className="visually-hidden" htmlFor="service-search-input">
         {placeholder}
       </label>
@@ -37,5 +28,5 @@ export function SearchField({
       />
       <kbd aria-hidden="true">/</kbd>
     </form>
-  )
+  );
 }

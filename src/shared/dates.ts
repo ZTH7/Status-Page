@@ -8,11 +8,7 @@ export function listUtcDays(endMs: number, count: number): string[] {
   }
 
   const end = new Date(endMs);
-  const cursor = new Date(Date.UTC(
-    end.getUTCFullYear(),
-    end.getUTCMonth(),
-    end.getUTCDate(),
-  ));
+  const cursor = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate()));
   cursor.setUTCDate(cursor.getUTCDate() - count + 1);
 
   const days: string[] = [];

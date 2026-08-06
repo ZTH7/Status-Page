@@ -1,13 +1,13 @@
-import type { ColorMode } from '../hooks/useColorMode'
+import type { ColorMode } from "../hooks/useColorMode";
 
 interface ColorModeToggleProps {
-  colorMode: ColorMode
-  onToggle(): void
+  colorMode: ColorMode;
+  onToggle(): void;
 }
 
 export function ColorModeToggle({ colorMode, onToggle }: ColorModeToggleProps) {
-  const isDark = colorMode === 'dark'
-  const nextMode = isDark ? 'light' : 'dark'
+  const isDark = colorMode === "dark";
+  const nextMode = isDark ? "light" : "dark";
 
   return (
     <button
@@ -16,7 +16,7 @@ export function ColorModeToggle({ colorMode, onToggle }: ColorModeToggleProps) {
       aria-label={`Switch to ${nextMode} mode`}
       onClick={onToggle}
     >
-      <span>{isDark ? 'Dark mode' : 'Light mode'}</span>
+      <span>{isDark ? "Dark mode" : "Light mode"}</span>
       {isDark ? (
         <svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16">
           <circle cx="12" cy="12" r="4" />
@@ -28,5 +28,5 @@ export function ColorModeToggle({ colorMode, onToggle }: ColorModeToggleProps) {
         </svg>
       )}
     </button>
-  )
+  );
 }

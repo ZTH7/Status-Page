@@ -89,10 +89,16 @@ const appConfig = parseConfigSources({
 });
 const publicConfig = publicBuildConfig(appConfig);
 
-writeGeneratedFile("src/generated/config.ts", typescriptExport("appConfig", "AppConfig", appConfig));
+writeGeneratedFile(
+  "src/generated/config.ts",
+  typescriptExport("appConfig", "AppConfig", appConfig),
+);
 writeGeneratedFile(
   "src/generated/public-config.ts",
   typescriptExport("publicConfig", "PublicBuildConfig", publicConfig),
 );
 writeGeneratedFile("src/generated/active-theme.ts", activeThemeSource(appConfig.site.theme));
-writeGeneratedFile("public/theme-bootstrap.js", themeBootstrap(appConfig.site.theme, appConfig.site.colorMode));
+writeGeneratedFile(
+  "public/theme-bootstrap.js",
+  themeBootstrap(appConfig.site.theme, appConfig.site.colorMode),
+);

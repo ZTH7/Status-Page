@@ -36,7 +36,13 @@ function failedResult({ checkedAt }: { checkedAt: number }): CheckResult {
   };
 }
 
-function degradedState({ firstFailedAt, latestAt }: { firstFailedAt: number; latestAt: number }): MonitorState {
+function degradedState({
+  firstFailedAt,
+  latestAt,
+}: {
+  firstFailedAt: number;
+  latestAt: number;
+}): MonitorState {
   return {
     monitorId: "blog",
     level: "degraded",
@@ -57,11 +63,13 @@ describe("threshold helpers", () => {
   });
 
   it("keeps explicit one-value threshold overrides", () => {
-    expect(resolveThresholds(DEFAULT_THRESHOLDS, {
-      degradedAfterFailures: 1,
-      outageAfterMinutes: 1,
-      recoverAfterSuccesses: 1,
-    })).toEqual({
+    expect(
+      resolveThresholds(DEFAULT_THRESHOLDS, {
+        degradedAfterFailures: 1,
+        outageAfterMinutes: 1,
+        recoverAfterSuccesses: 1,
+      }),
+    ).toEqual({
       degradedAfterFailures: 1,
       outageAfterMinutes: 1,
       recoverAfterSuccesses: 1,
@@ -135,7 +143,11 @@ describe("transitionMonitor", () => {
   });
 
   it("opens degraded after the second failure and sends one failure notification", () => {
-    const previous = transitionMonitor(null, failedResult({ checkedAt: 1_000 }), DEFAULT_THRESHOLDS).next;
+    const previous = transitionMonitor(
+      null,
+      failedResult({ checkedAt: 1_000 }),
+      DEFAULT_THRESHOLDS,
+    ).next;
     const result = failedResult({ checkedAt: 2_000 });
 
     expect(transitionMonitor(previous, result, DEFAULT_THRESHOLDS)).toMatchObject({
@@ -190,20 +202,23 @@ describe("transitionMonitor", () => {
   it.each([
     ["one-minute", 1, 61_000, 60_000],
     ["three-minute", 3, 181_000, 180_000],
-  ])("escalates at the exact non-default %s outage boundary", (_name, outageAfterMinutes, checkedAt, latestAt) => {
-    const previous = degradedState({ firstFailedAt: 1_000, latestAt });
-    const transition = transitionMonitor(previous, failedResult({ checkedAt }), {
-      degradedAfterFailures: 2,
-      outageAfterMinutes,
-      recoverAfterSuccesses: 2,
-    });
+  ])(
+    "escalates at the exact non-default %s outage boundary",
+    (_name, outageAfterMinutes, checkedAt, latestAt) => {
+      const previous = degradedState({ firstFailedAt: 1_000, latestAt });
+      const transition = transitionMonitor(previous, failedResult({ checkedAt }), {
+        degradedAfterFailures: 2,
+        outageAfterMinutes,
+        recoverAfterSuccesses: 2,
+      });
 
-    expect(transition).toMatchObject({
-      next: { level: "outage", firstFailedAt: 1_000 },
-      incident: { type: "escalate", incidentId: "blog:1000", outageAt: checkedAt },
-      notification: null,
-    });
-  });
+      expect(transition).toMatchObject({
+        next: { level: "outage", firstFailedAt: 1_000 },
+        incident: { type: "escalate", incidentId: "blog:1000", outageAt: checkedAt },
+        notification: null,
+      });
+    },
+  );
 
   it("keeps a continued outage open without another mutation or notification", () => {
     const previous: MonitorState = {
@@ -212,8 +227,15 @@ describe("transitionMonitor", () => {
       consecutiveFailures: 3,
     };
 
-    expect(transitionMonitor(previous, failedResult({ checkedAt: 3_602_000 }), DEFAULT_THRESHOLDS)).toMatchObject({
-      next: { level: "outage", consecutiveFailures: 4, consecutiveSuccesses: 0, firstFailedAt: 1_000 },
+    expect(
+      transitionMonitor(previous, failedResult({ checkedAt: 3_602_000 }), DEFAULT_THRESHOLDS),
+    ).toMatchObject({
+      next: {
+        level: "outage",
+        consecutiveFailures: 4,
+        consecutiveSuccesses: 0,
+        firstFailedAt: 1_000,
+      },
       incident: null,
       notification: null,
       dailySeverity: "outage",
@@ -226,7 +248,9 @@ describe("transitionMonitor", () => {
       level: "outage",
     };
 
-    expect(transitionMonitor(previous, successfulResult(3_602_000), DEFAULT_THRESHOLDS)).toMatchObject({
+    expect(
+      transitionMonitor(previous, successfulResult(3_602_000), DEFAULT_THRESHOLDS),
+    ).toMatchObject({
       next: {
         level: "outage",
         consecutiveFailures: 0,
@@ -248,7 +272,9 @@ describe("transitionMonitor", () => {
       latest: successfulResult(3_602_000),
     };
 
-    expect(transitionMonitor(previous, failedResult({ checkedAt: 3_603_000 }), DEFAULT_THRESHOLDS)).toMatchObject({
+    expect(
+      transitionMonitor(previous, failedResult({ checkedAt: 3_603_000 }), DEFAULT_THRESHOLDS),
+    ).toMatchObject({
       next: {
         level: "outage",
         consecutiveFailures: 1,
@@ -287,11 +313,13 @@ describe("transitionMonitor", () => {
   });
 
   it("opens on the first failure when the degraded threshold is one", () => {
-    expect(transitionMonitor(null, failedResult({ checkedAt: 1_000 }), {
-      degradedAfterFailures: 1,
-      outageAfterMinutes: 60,
-      recoverAfterSuccesses: 2,
-    })).toMatchObject({
+    expect(
+      transitionMonitor(null, failedResult({ checkedAt: 1_000 }), {
+        degradedAfterFailures: 1,
+        outageAfterMinutes: 60,
+        recoverAfterSuccesses: 2,
+      }),
+    ).toMatchObject({
       next: { level: "degraded", consecutiveFailures: 1, firstFailedAt: 1_000 },
       incident: { type: "open", incidentId: "blog:1000", firstFailedAt: 1_000, degradedAt: 1_000 },
       notification: { type: "failure", monitorId: "blog", at: 1_000 },
@@ -306,31 +334,51 @@ describe("transitionMonitor", () => {
     };
     const degraded = transitionMonitor(null, failedResult({ checkedAt: 1_000 }), thresholds).next;
     const onceRecovered = transitionMonitor(degraded, successfulResult(2_000), thresholds).next;
-    const twiceRecovered = transitionMonitor(onceRecovered, successfulResult(3_000), thresholds).next;
+    const twiceRecovered = transitionMonitor(
+      onceRecovered,
+      successfulResult(3_000),
+      thresholds,
+    ).next;
 
     expect(transitionMonitor(twiceRecovered, successfulResult(4_000), thresholds)).toMatchObject({
-      next: { level: "operational", consecutiveFailures: 0, consecutiveSuccesses: 0, firstFailedAt: null },
+      next: {
+        level: "operational",
+        consecutiveFailures: 0,
+        consecutiveSuccesses: 0,
+        firstFailedAt: null,
+      },
       incident: { type: "recover", incidentId: "blog:1000", recoveredAt: 4_000 },
       notification: { type: "recovery", monitorId: "blog", at: 4_000 },
     });
   });
 
-  it.each([1, 5, 10])("reaches outage after one elapsed hour on a %i-minute schedule", (minutes) => {
-    const previous = degradedState({ firstFailedAt: 0, latestAt: 3_600_000 - minutes * 60_000 });
-    const transition = transitionMonitor(previous, failedResult({ checkedAt: 3_600_000 }), DEFAULT_THRESHOLDS);
+  it.each([1, 5, 10])(
+    "reaches outage after one elapsed hour on a %i-minute schedule",
+    (minutes) => {
+      const previous = degradedState({ firstFailedAt: 0, latestAt: 3_600_000 - minutes * 60_000 });
+      const transition = transitionMonitor(
+        previous,
+        failedResult({ checkedAt: 3_600_000 }),
+        DEFAULT_THRESHOLDS,
+      );
 
-    expect(transition).toMatchObject({
-      next: { level: "outage" },
-      incident: { type: "escalate", incidentId: "blog:0", outageAt: 3_600_000 },
-      notification: null,
-    });
-  });
+      expect(transition).toMatchObject({
+        next: { level: "outage" },
+        incident: { type: "escalate", incidentId: "blog:0", outageAt: 3_600_000 },
+        notification: null,
+      });
+    },
+  );
 
   it.each([
     [999, "stale"],
     [1_000, "equal"],
   ])("preserves the exact prior state for a %s timestamp", (checkedAt) => {
-    const previous = transitionMonitor(null, failedResult({ checkedAt: 1_000 }), DEFAULT_THRESHOLDS).next;
+    const previous = transitionMonitor(
+      null,
+      failedResult({ checkedAt: 1_000 }),
+      DEFAULT_THRESHOLDS,
+    ).next;
     const transition = transitionMonitor(previous, successfulResult(checkedAt), DEFAULT_THRESHOLDS);
 
     expect(transition).toEqual({

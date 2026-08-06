@@ -1,5 +1,5 @@
 :root {
-  font-family: 'Geist Variable', system-ui, sans-serif;
+  font-family: "Geist Variable", system-ui, sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 }
@@ -130,10 +130,7 @@
   position: relative;
   z-index: 0;
   display: grid;
-  grid-template-columns: minmax(12rem, 1fr) minmax(10rem, auto) minmax(
-      22rem,
-      2fr
-    );
+  grid-template-columns: minmax(12rem, 1fr) minmax(10rem, auto) minmax(22rem, 2fr);
   align-items: center;
   gap: 24px;
   min-width: 0;

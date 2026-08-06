@@ -1,4 +1,6 @@
-export type ThemeId = "default" | "stardew-inspired";
+export const THEME_IDS = ["default", "stardew-inspired"] as const;
+
+export type ThemeId = (typeof THEME_IDS)[number];
 export type ColorModePreference = "system" | "light" | "dark";
 export type HttpMethod = "GET" | "HEAD";
 
@@ -54,8 +56,8 @@ export interface SiteConfig {
   theme: ThemeId;
   colorMode: ColorModePreference;
   historyDays: number;
-  rawRetentionDays: number;
   requestTimeoutSeconds: number;
+  userAgent: string;
   thresholds: Thresholds;
   labels: PublicLabels;
 }

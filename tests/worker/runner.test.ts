@@ -4,22 +4,16 @@ import type { AppConfig, MonitorConfig, Thresholds } from "../../src/config/type
 import type { CheckResult, MonitorState } from "../../src/domain/types";
 import { appConfig } from "../../src/generated/config";
 import type { Env } from "../../src/worker/env";
-import {
-  createScheduledHandler,
-  type ScheduledDependencies,
-} from "../../src/worker/index";
+import { createScheduledHandler, type ScheduledDependencies } from "../../src/worker/index";
 import {
   logStructuredRecord,
   runChecks,
-  runRetention,
   type RunChecksDependencies,
   type RunSummary,
   type SafeStructuredRecord,
 } from "../../src/worker/monitoring/runner";
-import { DuplicateCheckBatchError } from "../../src/worker/storage/repository";
 
 const AT = Date.UTC(2026, 7, 5, 12);
-const DAY_MS = 86_400_000;
 const DEFAULT_THRESHOLDS: Thresholds = {
   degradedAfterFailures: 2,
   outageAfterMinutes: 60,
@@ -39,10 +33,7 @@ function monitor(id: string, overrides: Partial<MonitorConfig> = {}): MonitorCon
   };
 }
 
-function config(
-  monitors: MonitorConfig[],
-  thresholds: Thresholds = DEFAULT_THRESHOLDS,
-): AppConfig {
+function config(monitors: MonitorConfig[], thresholds: Thresholds = DEFAULT_THRESHOLDS): AppConfig {
   return {
     site: { ...appConfig.site, thresholds },
     monitors,
@@ -93,23 +84,31 @@ function deferred<T>(): {
   return { promise, resolve, reject };
 }
 
-function runnerHarness(options: {
-  app?: AppConfig;
-  states?: Map<string, MonitorState>;
-  probe?: RunChecksDependencies["probeMonitor"];
-  persist?: RunChecksDependencies["persistCheckBatch"];
-  location?: string;
-} = {}) {
+function runnerHarness(
+  options: {
+    app?: AppConfig;
+    states?: Map<string, MonitorState>;
+    probe?: RunChecksDependencies["probeMonitor"];
+    persist?: RunChecksDependencies["persistCheckBatch"];
+    location?: string;
+  } = {},
+) {
   const logs: SafeStructuredRecord[] = [];
   const persisted: Parameters<RunChecksDependencies["persistCheckBatch"]>[1][] = [];
   const loadMonitorStates = vi.fn(async () => options.states ?? new Map());
   const resolveLocation = vi.fn(async () => options.location ?? "SJC");
-  const probeMonitor = vi.fn(options.probe ?? (async (item, scheduledAt, location) => (
-    result(item.id, true, { checkedAt: scheduledAt, location })
-  )));
-  const persistCheckBatch = vi.fn(options.persist ?? (async (_db, checks) => {
-    persisted.push(checks);
-  }));
+  const probeMonitor = vi.fn(
+    options.probe ??
+      (async (item, scheduledAt, location) =>
+        result(item.id, true, { checkedAt: scheduledAt, location })),
+  );
+  const persistCheckBatch = vi.fn(
+    options.persist ??
+      (async (_db, checks) => {
+        persisted.push(checks);
+        return { appliedMonitorIds: checks.map((check) => check.result.monitorId) };
+      }),
+  );
   const dependencies: RunChecksDependencies = {
     loadMonitorStates,
     resolveLocation,
@@ -158,7 +157,6 @@ function scheduledController(cron = "* * * * *", scheduledTime = AT): ScheduledC
 function scheduledHarness(overrides: Partial<ScheduledDependencies> = {}) {
   const logs: SafeStructuredRecord[] = [];
   const runMonitoring = vi.fn(async () => summary());
-  const runRetentionTask = vi.fn(async () => 3);
   const dispatchNotifications = vi.fn(async () => [
     { channel: "slack" as const, status: "sent" as const },
     { channel: "telegram" as const, status: "skipped" as const, reason: "not-configured" },
@@ -166,7 +164,6 @@ function scheduledHarness(overrides: Partial<ScheduledDependencies> = {}) {
   const dependencies: ScheduledDependencies = {
     config: config([monitor("blog")]),
     runMonitoring,
-    runRetention: runRetentionTask,
     dispatchNotifications,
     fetch: vi.fn(async () => new Response(null, { status: 200 })) as unknown as typeof fetch,
     log: (record) => logs.push(record),
@@ -180,7 +177,6 @@ function scheduledHarness(overrides: Partial<ScheduledDependencies> = {}) {
     handler: createScheduledHandler(dependencies),
     dependencies,
     runMonitoring,
-    runRetentionTask,
     dispatchNotifications,
     waitUntil,
     env,
@@ -198,9 +194,10 @@ describe("runChecks", () => {
     const app = config([monitor("blog"), monitor("vault")]);
     const harness = runnerHarness({
       app,
-      probe: async (item, scheduledAt, location) => item.id === "blog"
-        ? result("blog", true, { checkedAt: scheduledAt, location })
-        : result("vault", false, { checkedAt: scheduledAt, location, errorCode: "network" }),
+      probe: async (item, scheduledAt, location) =>
+        item.id === "blog"
+          ? result("blog", true, { checkedAt: scheduledAt, location })
+          : result("vault", false, { checkedAt: scheduledAt, location, errorCode: "network" }),
     });
 
     await expect(runChecks(harness.input)).resolves.toEqual({
@@ -294,10 +291,11 @@ describe("runChecks", () => {
     ]);
     const harness = runnerHarness({
       app,
-      probe: async (item, scheduledAt, location) => result(item.id, false, {
-        checkedAt: scheduledAt,
-        location,
-      }),
+      probe: async (item, scheduledAt, location) =>
+        result(item.id, false, {
+          checkedAt: scheduledAt,
+          location,
+        }),
     });
 
     const value = await runChecks(harness.input);
@@ -354,7 +352,7 @@ describe("runChecks", () => {
     const harness = runnerHarness({
       app: config([monitor("blog", { thresholds: { degradedAfterFailures: 1 } })]),
       probe: async () => result("blog", false),
-      persist: async () => Promise.reject(new DuplicateCheckBatchError()),
+      persist: async () => ({ appliedMonitorIds: [] }),
     });
 
     await expect(runChecks(harness.input)).resolves.toEqual({
@@ -366,16 +364,18 @@ describe("runChecks", () => {
       notifications: [],
       duplicate: true,
     });
-    expect(harness.logs).toEqual([{
-      event: "monitoring-run",
-      scheduledAt: AT,
-      location: "SJC",
-      checked: 1,
-      succeeded: 0,
-      failed: 1,
-      duplicate: true,
-      results: [{ monitorId: "blog", errorCode: null }],
-    }]);
+    expect(harness.logs).toEqual([
+      {
+        event: "monitoring-run",
+        scheduledAt: AT,
+        location: "SJC",
+        checked: 1,
+        succeeded: 0,
+        failed: 1,
+        duplicate: true,
+        results: [{ monitorId: "blog", errorCode: null }],
+      },
+    ]);
   });
 
   it("rethrows a non-duplicate storage error unchanged after one fixed safe failure log", async () => {
@@ -383,16 +383,18 @@ describe("runChecks", () => {
     const harness = runnerHarness({ persist: async () => Promise.reject(storageError) });
 
     await expect(runChecks(harness.input)).rejects.toBe(storageError);
-    expect(harness.logs).toEqual([{
-      event: "monitoring-storage-failed",
-      scheduledAt: AT,
-      location: "SJC",
-      checked: 1,
-      succeeded: 1,
-      failed: 0,
-      duplicate: false,
-      results: [{ monitorId: "blog", errorCode: null }],
-    }]);
+    expect(harness.logs).toEqual([
+      {
+        event: "monitoring-storage-failed",
+        scheduledAt: AT,
+        location: "SJC",
+        checked: 1,
+        succeeded: 1,
+        failed: 0,
+        duplicate: false,
+        results: [{ monitorId: "blog", errorCode: null }],
+      },
+    ]);
     expect(JSON.stringify(harness.logs)).not.toContain("D1 unavailable");
     expect(JSON.stringify(harness.logs)).not.toContain("private.example");
     expect(JSON.stringify(harness.logs)).not.toContain("token-123");
@@ -414,14 +416,14 @@ describe("runChecks", () => {
         recoverAfterSuccesses: 2,
       });
       const dependencies: RunChecksDependencies = {
-        loadMonitorStates: async () => current === undefined
-          ? new Map()
-          : new Map([["blog", current]]),
+        loadMonitorStates: async () =>
+          current === undefined ? new Map() : new Map([["blog", current]]),
         resolveLocation: async () => "SJC",
         probeMonitor: async () => result("blog", false, { checkedAt: scheduledAt }),
         persistCheckBatch: async (_db, checks) => {
           current = checks[0]?.transition.next;
           if (current !== undefined) levels.push(current.level);
+          return { appliedMonitorIds: checks.map((check) => check.result.monitorId) };
         },
         log: () => undefined,
       };
@@ -438,18 +440,6 @@ describe("runChecks", () => {
   );
 });
 
-describe("retention", () => {
-  it("deletes raw checks at the exact supplied cutoff and returns the change count", async () => {
-    const run = vi.fn(async () => ({ meta: { changes: 7 } }));
-    const bind = vi.fn(() => ({ run }));
-    const prepare = vi.fn(() => ({ bind }));
-    const db = { prepare } as unknown as D1Database;
-
-    await expect(runRetention(db, AT - 90 * DAY_MS)).resolves.toBe(7);
-    expect(bind).toHaveBeenCalledWith(AT - 90 * DAY_MS);
-  });
-});
-
 describe("scheduled handler", () => {
   it("calls waitUntil only after a successful monitoring commit resolves", async () => {
     const pending = deferred<RunSummary>();
@@ -460,9 +450,11 @@ describe("scheduled handler", () => {
     await Promise.resolve();
     expect(harness.waitUntil).not.toHaveBeenCalled();
 
-    pending.resolve(summary({
-      notifications: [{ type: "failure", monitorId: "blog", at: AT }],
-    }));
+    pending.resolve(
+      summary({
+        notifications: [{ type: "failure", monitorId: "blog", at: AT }],
+      }),
+    );
     await handlerPromise;
 
     expect(harness.dispatchNotifications).toHaveBeenCalledOnce();
@@ -472,10 +464,12 @@ describe("scheduled handler", () => {
 
   it("schedules no notification when monitoring returns duplicate", async () => {
     const harness = scheduledHarness({
-      runMonitoring: vi.fn(async () => summary({
-        duplicate: true,
-        notifications: [],
-      })),
+      runMonitoring: vi.fn(async () =>
+        summary({
+          duplicate: true,
+          notifications: [],
+        }),
+      ),
     });
 
     await harness.handler(scheduledController(), harness.env, harness.ctx);
@@ -490,22 +484,9 @@ describe("scheduled handler", () => {
       runMonitoring: vi.fn(async () => Promise.reject(failure)),
     });
 
-    await expect(harness.handler(scheduledController(), harness.env, harness.ctx)).rejects.toBe(failure);
-    expect(harness.dispatchNotifications).not.toHaveBeenCalled();
-    expect(harness.waitUntil).not.toHaveBeenCalled();
-  });
-
-  it("routes only the exact retention cron with an exact retention cutoff", async () => {
-    const harness = scheduledHarness();
-    const retentionAt = Date.UTC(2026, 7, 6, 3, 17);
-
-    await harness.handler(scheduledController("17 3 * * *", retentionAt), harness.env, harness.ctx);
-
-    expect(harness.runRetentionTask).toHaveBeenCalledWith(
-      harness.env.DB,
-      retentionAt - appConfig.site.rawRetentionDays * DAY_MS,
+    await expect(harness.handler(scheduledController(), harness.env, harness.ctx)).rejects.toBe(
+      failure,
     );
-    expect(harness.runMonitoring).not.toHaveBeenCalled();
     expect(harness.dispatchNotifications).not.toHaveBeenCalled();
     expect(harness.waitUntil).not.toHaveBeenCalled();
   });

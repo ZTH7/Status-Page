@@ -21,7 +21,7 @@ input {
 }
 
 button,
-input[type='search'] {
+input[type="search"] {
   appearance: none;
 }
 

@@ -17,7 +17,8 @@ export interface DispatchNotificationsInput {
   actions: readonly NotificationAction[];
   monitors: readonly MonitorConfig[];
   site: Pick<SiteConfig, "title" | "url" | "labels">;
-  env: Pick<Env,
+  env: Pick<
+    Env,
     | "SECRET_SLACK_WEBHOOK_URL"
     | "SECRET_TELEGRAM_API_TOKEN"
     | "SECRET_TELEGRAM_CHAT_ID"
@@ -38,8 +39,11 @@ interface PresentedAction {
 
 const CHANNELS: readonly NotificationChannel[] = ["slack", "telegram", "discord"];
 const SEND_FAILED = "send-failed";
-const YELLOW = 0xFEE75C;
-const GREEN = 0x57F287;
+const YELLOW = 0xfee75c;
+const GREEN = 0x57f287;
+const TELEGRAM_MESSAGE_LIMIT = 4_000;
+const DISCORD_EMBED_LIMIT = 10;
+const DISCORD_CHARACTER_LIMIT = 5_800;
 
 export async function dispatchNotifications(
   input: DispatchNotificationsInput,
@@ -86,15 +90,17 @@ function presentActions(
     }
 
     const failure = action.type === "failure";
-    return [{
-      label: failure ? site.labels.degraded : site.labels.operational,
-      emoji: failure ? "🟡" : "🟢",
-      color: failure ? YELLOW : GREEN,
-      monitorName: monitor.name,
-      method: monitor.method,
-      monitorUrl: monitor.url,
-      actionTime: actionTime(action.at),
-    }];
+    return [
+      {
+        label: failure ? site.labels.degraded : site.labels.operational,
+        emoji: failure ? "🟡" : "🟢",
+        color: failure ? YELLOW : GREEN,
+        monitorName: monitor.name,
+        method: monitor.method,
+        monitorUrl: monitor.url,
+        actionTime: actionTime(action.at),
+      },
+    ];
   });
 }
 
@@ -129,7 +135,9 @@ async function dispatchTelegram(
     return skipped("telegram", "not-configured");
   }
 
-  await sendTelegram({ token, chatId, text: telegramText(input.site, actions) }, input.fetch);
+  for (const text of telegramMessages(input.site, actions)) {
+    await sendTelegram({ token, chatId, text }, input.fetch);
+  }
   return sent("telegram");
 }
 
@@ -142,7 +150,9 @@ async function dispatchDiscord(
     return skipped("discord", "not-configured");
   }
 
-  await sendDiscord({ webhookUrl, embeds: discordEmbeds(input.site, actions) }, input.fetch);
+  for (const embeds of discordBatches(discordEmbeds(input.site, actions))) {
+    await sendDiscord({ webhookUrl, embeds }, input.fetch);
+  }
   return sent("discord");
 }
 
@@ -172,18 +182,21 @@ function slackSite(site: Pick<SiteConfig, "title" | "url">): string {
   return `<${escapeSlackLinkUrl(url)}|${escapeSlack(site.title)}>`;
 }
 
-function telegramText(
+function telegramMessages(
   site: Pick<SiteConfig, "title" | "url">,
   actions: readonly PresentedAction[],
-): string {
-  return actions.map((action) => [
-    `<b>${escapeHtml(action.emoji)} ${escapeHtml(action.label)}</b>`,
-    `<b>Site:</b> <a href="${escapeHtml(site.url)}">${escapeHtml(site.title)}</a>`,
-    `<b>Monitor:</b> ${escapeHtml(action.monitorName)}`,
-    `<b>Method:</b> ${escapeHtml(action.method)}`,
-    `<b>Target:</b> ${escapeHtml(action.monitorUrl)}`,
-    `<b>Time:</b> ${escapeHtml(action.actionTime)}`,
-  ].join("\n")).join("\n\n");
+): string[] {
+  const sections = actions.map((action) =>
+    [
+      `<b>${escapeHtml(action.emoji)} ${escapeHtml(action.label)}</b>`,
+      `<b>Site:</b> <a href="${escapeHtml(site.url)}">${escapeHtml(site.title)}</a>`,
+      `<b>Monitor:</b> ${escapeHtml(action.monitorName)}`,
+      `<b>Method:</b> ${escapeHtml(action.method)}`,
+      `<b>Target:</b> ${escapeHtml(action.monitorUrl)}`,
+      `<b>Time:</b> ${escapeHtml(action.actionTime)}`,
+    ].join("\n"),
+  );
+  return chunkStrings(sections, TELEGRAM_MESSAGE_LIMIT, "\n\n");
 }
 
 function discordEmbeds(
@@ -191,9 +204,10 @@ function discordEmbeds(
   actions: readonly PresentedAction[],
 ): DiscordEmbed[] {
   const siteUrl = httpUrl(site.url);
-  const siteValue = siteUrl === undefined
-    ? `${escapeDiscordMarkdown(site.title)} (${escapeDiscordMarkdown(site.url)})`
-    : `[${escapeDiscordMarkdown(site.title)}](${escapeDiscordMarkdown(siteUrl)})`;
+  const siteValue =
+    siteUrl === undefined
+      ? `${escapeDiscordMarkdown(site.title)} (${escapeDiscordMarkdown(site.url)})`
+      : `[${escapeDiscordMarkdown(site.title)}](${escapeDiscordMarkdown(siteUrl)})`;
 
   return actions.map((action) => ({
     title: `${action.emoji} ${escapeDiscordMarkdown(action.label)}`,
@@ -209,6 +223,55 @@ function discordEmbeds(
   }));
 }
 
+function discordBatches(embeds: readonly DiscordEmbed[]): DiscordEmbed[][] {
+  const batches: DiscordEmbed[][] = [];
+  let current: DiscordEmbed[] = [];
+  let currentCharacters = 0;
+
+  for (const embed of embeds) {
+    const characters = discordEmbedCharacters(embed);
+    if (
+      current.length > 0 &&
+      (current.length >= DISCORD_EMBED_LIMIT ||
+        currentCharacters + characters > DISCORD_CHARACTER_LIMIT)
+    ) {
+      batches.push(current);
+      current = [];
+      currentCharacters = 0;
+    }
+    current.push(embed);
+    currentCharacters += characters;
+  }
+
+  if (current.length > 0) batches.push(current);
+  return batches;
+}
+
+function discordEmbedCharacters(embed: DiscordEmbed): number {
+  return (
+    embed.title.length +
+    embed.fields.reduce((total, field) => total + field.name.length + field.value.length, 0)
+  );
+}
+
+function chunkStrings(values: readonly string[], limit: number, separator: string): string[] {
+  const chunks: string[] = [];
+  let current = "";
+
+  for (const value of values) {
+    const candidate = current.length === 0 ? value : `${current}${separator}${value}`;
+    if (current.length > 0 && candidate.length > limit) {
+      chunks.push(current);
+      current = value;
+    } else {
+      current = candidate;
+    }
+  }
+
+  if (current.length > 0) chunks.push(current);
+  return chunks;
+}
+
 function httpUrl(value: string): string | undefined {
   try {
     const parsed = new URL(value);
@@ -222,10 +285,7 @@ function httpUrl(value: string): string | undefined {
 }
 
 function escapeSlack(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;");
+  return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 }
 
 function escapeSlackLinkUrl(value: string): string {
@@ -233,9 +293,7 @@ function escapeSlackLinkUrl(value: string): string {
 }
 
 function escapeDiscordMarkdown(value: string): string {
-  return value
-    .replaceAll("\\", "\\\\")
-    .replace(/([`*_{}\[\]<>()[\]#!+\-|~])/g, "\\$1");
+  return value.replaceAll("\\", "\\\\").replace(/([`*_{}\[\]<>()[\]#!+\-|~])/g, "\\$1");
 }
 
 function escapeHtml(value: string): string {

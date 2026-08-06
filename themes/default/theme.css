@@ -40,7 +40,7 @@ FORM: Approved composition C, a single-column broad-card feed with no generated 
   color: var(--text);
 }
 
-:root.theme-default[data-color-mode='dark'] {
+:root.theme-default[data-color-mode="dark"] {
   color-scheme: dark;
   --canvas: #0f1115;
   --surface: #17191f;
@@ -61,7 +61,7 @@ FORM: Approved composition C, a single-column broad-card feed with no generated 
 .theme-default body {
   background: var(--canvas);
   color: var(--text);
-  font-family: 'Geist Variable', system-ui, sans-serif;
+  font-family: "Geist Variable", system-ui, sans-serif;
   font-size: 0.9375rem;
   line-height: 1.5;
 }
@@ -185,19 +185,19 @@ FORM: Approved composition C, a single-column broad-card feed with no generated 
   stroke-width: 2;
 }
 
-.theme-default [data-level='operational'].overall-status__mark {
+.theme-default [data-level="operational"].overall-status__mark {
   background: var(--status-operational-base);
 }
 
-.theme-default [data-level='degraded'].overall-status__mark {
+.theme-default [data-level="degraded"].overall-status__mark {
   background: var(--status-degraded-base);
 }
 
-.theme-default [data-level='outage'].overall-status__mark {
+.theme-default [data-level="outage"].overall-status__mark {
   background: var(--status-outage-base);
 }
 
-.theme-default [data-level='unknown'].overall-status__mark {
+.theme-default [data-level="unknown"].overall-status__mark {
   background: var(--status-unknown-base);
 }
 
@@ -233,7 +233,8 @@ FORM: Approved composition C, a single-column broad-card feed with no generated 
   color: var(--muted);
   transition:
     border-color var(--motion-standard),
-    box-shadow var(--motion-standard);
+    box-shadow var(--motion-standard),
+    transform var(--motion-standard);
 }
 
 .theme-default .service-search:focus-within {
@@ -286,6 +287,7 @@ FORM: Approved composition C, a single-column broad-card feed with no generated 
 .theme-default .service-card:focus-within {
   border-color: color-mix(in srgb, var(--border) 40%, var(--muted));
   box-shadow: var(--elevated-shadow);
+  transform: translateY(-2px);
 }
 
 .theme-default .service-card:has(.history-detail),
@@ -351,22 +353,22 @@ FORM: Approved composition C, a single-column broad-card feed with no generated 
   background: currentColor;
 }
 
-.theme-default [data-level='operational'].status-badge {
+.theme-default [data-level="operational"].status-badge {
   background: var(--status-operational-fill);
   color: var(--status-operational-foreground);
 }
 
-.theme-default [data-level='degraded'].status-badge {
+.theme-default [data-level="degraded"].status-badge {
   background: var(--status-degraded-fill);
   color: var(--status-degraded-foreground);
 }
 
-.theme-default [data-level='outage'].status-badge {
+.theme-default [data-level="outage"].status-badge {
   background: var(--status-outage-fill);
   color: var(--status-outage-foreground);
 }
 
-.theme-default [data-level='unknown'].status-badge {
+.theme-default [data-level="unknown"].status-badge {
   background: var(--status-unknown-fill);
   color: var(--status-unknown-foreground);
 }
@@ -378,25 +380,26 @@ FORM: Approved composition C, a single-column broad-card feed with no generated 
 .theme-default .history-day > span {
   border-radius: 2px;
   background: var(--status-unknown-base);
-  transition: height var(--motion-standard);
+  transform-origin: bottom;
+  transition: transform var(--motion-standard);
 }
 
-.theme-default .history-day[data-level='operational'] > span {
+.theme-default .history-day[data-level="operational"] > span {
   background: var(--status-operational-base);
 }
 
-.theme-default .history-day[data-level='degraded'] > span {
+.theme-default .history-day[data-level="degraded"] > span {
   background: var(--status-degraded-base);
 }
 
-.theme-default .history-day[data-level='outage'] > span {
+.theme-default .history-day[data-level="outage"] > span {
   background: var(--status-outage-base);
 }
 
 .theme-default .history-day:hover > span,
 .theme-default .history-day:focus-visible > span,
-.theme-default .history-day[aria-expanded='true'] > span {
-  height: 20px;
+.theme-default .history-day[aria-expanded="true"] > span {
+  transform: scaleY(1.25);
 }
 
 .theme-default .history-day:focus-visible {
@@ -469,5 +472,10 @@ FORM: Approved composition C, a single-column broad-card feed with no generated 
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+  }
+
+  .theme-default .service-card:hover,
+  .theme-default .service-card:focus-within {
+    transform: none;
   }
 }

@@ -31,7 +31,8 @@ export function useColorMode(): ColorModeState {
   const mediaQuery = useMemo(() => window.matchMedia(darkModeQuery), []);
   const [preference, setPreference] = useState<ColorModePreference>(initialPreference);
   const [systemDark, setSystemDark] = useState(mediaQuery.matches);
-  const colorMode: ColorMode = preference === "system" ? (systemDark ? "dark" : "light") : preference;
+  const colorMode: ColorMode =
+    preference === "system" ? (systemDark ? "dark" : "light") : preference;
 
   useEffect(() => {
     document.documentElement.dataset.colorMode = colorMode;

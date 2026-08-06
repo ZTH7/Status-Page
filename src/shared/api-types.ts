@@ -1,4 +1,4 @@
-import type { PublicLabels } from "../config/types";
+import type { ColorModePreference, PublicLabels, ThemeId } from "../config/types";
 import type { StatusLevel } from "../domain/types";
 
 export type PublicLevel = StatusLevel | "unknown";
@@ -31,8 +31,8 @@ export interface PublicSiteConfig {
   title: string;
   url: string;
   logo: string;
-  theme: "default" | "stardew-inspired";
-  colorMode: "system" | "light" | "dark";
+  theme: ThemeId;
+  colorMode: ColorModePreference;
   historyDays: number;
   labels: PublicLabels;
 }

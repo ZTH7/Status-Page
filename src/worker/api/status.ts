@@ -38,22 +38,14 @@ export async function buildStatusResponse(
   const [states, summaries, incidents] = await Promise.all([
     readCurrentStates(dependencies.db, monitorIds),
     readDailySummariesSince(dependencies.db, monitorIds, sinceDay),
-    readIncidentsOverlapping(
-      dependencies.db,
-      monitorIds,
-      windowStartMs,
-      generatedAt,
-    ),
+    readIncidentsOverlapping(dependencies.db, monitorIds, windowStartMs, generatedAt),
   ]);
 
   const statesByMonitor = new Map(states.map((state) => [state.monitorId, state]));
   const summariesByMonitorAndDay = groupSummaries(summaries);
-  const monitors = dependencies.config.monitors.map((monitor) => buildMonitor(
-    monitor,
-    statesByMonitor.get(monitor.id),
-    days,
-    summariesByMonitorAndDay,
-  ));
+  const monitors = dependencies.config.monitors.map((monitor) =>
+    buildMonitor(monitor, statesByMonitor.get(monitor.id), days, summariesByMonitorAndDay),
+  );
 
   return {
     generatedAt,
@@ -61,11 +53,7 @@ export async function buildStatusResponse(
     overall: maxLevel(monitors.map(({ level }) => level)),
     site: publicSite(dependencies.config),
     monitors,
-    incidents: publicIncidents(
-      incidents,
-      dependencies.config.monitors,
-      generatedAt,
-    ),
+    incidents: publicIncidents(incidents, dependencies.config.monitors, generatedAt),
   };
 }
 
@@ -87,11 +75,9 @@ export async function handleStatusRequest(
   }
 
   try {
-    return jsonResponse(
-      await buildStatusResponse(dependencies),
-      200,
-      { "Cache-Control": SUCCESS_CACHE_CONTROL },
-    );
+    return jsonResponse(await buildStatusResponse(dependencies), 200, {
+      "Cache-Control": SUCCESS_CACHE_CONTROL,
+    });
   } catch {
     return jsonResponse<ApiErrorResponse>(
       {
@@ -137,9 +123,7 @@ function buildMonitor(
   return {
     id: monitor.id,
     name: monitor.name,
-    ...(monitor.description === undefined
-      ? {}
-      : { description: monitor.description }),
+    ...(monitor.description === undefined ? {} : { description: monitor.description }),
     ...(monitor.linkable ? { href: monitor.url } : {}),
     ...(monitor.presentationLogo === undefined
       ? {}
@@ -153,10 +137,7 @@ function buildMonitor(
           location: state.latest.location,
         }
       : null,
-    history: days.map((day) => buildDay(
-      day,
-      summaries.get(monitor.id)?.get(day) ?? [],
-    )),
+    history: days.map((day) => buildDay(day, summaries.get(monitor.id)?.get(day) ?? [])),
   };
 }
 
@@ -169,16 +150,11 @@ function buildDay(day: string, rows: readonly DailySummary[]): PublicDay {
     day,
     level: maxLevel(rows.map(({ highestSeverity }) => highestSeverity)),
     checks: rows.reduce((total, { checkCount }) => total + checkCount, 0),
-    failures: rows.reduce(
-      (total, { failedCheckCount }) => total + failedCheckCount,
-      0,
-    ),
+    failures: rows.reduce((total, { failedCheckCount }) => total + failedCheckCount, 0),
     locations: rows
       .map((row) => ({
         code: row.location,
-        averageMs: row.responseCount === 0
-          ? null
-          : row.responseTimeSum / row.responseCount,
+        averageMs: row.responseCount === 0 ? null : row.responseTimeSum / row.responseCount,
         checks: row.checkCount,
       }))
       .sort((left, right) => compareText(left.code, right.code)),
@@ -210,21 +186,23 @@ function publicIncidents(
       const monitorName = names.get(incident.monitorId);
       if (monitorName === undefined) return [];
       const end = incident.recoveredAt ?? generatedAt;
-      return [{
-        id: incident.id,
-        monitorId: incident.monitorId,
-        monitorName,
-        firstFailedAt: incident.firstFailedAt,
-        degradedAt: incident.degradedAt,
-        outageAt: incident.outageAt,
-        recoveredAt: incident.recoveredAt,
-        durationMs: Math.max(0, end - incident.firstFailedAt),
-        highestSeverity: incident.highestSeverity,
-      }];
+      return [
+        {
+          id: incident.id,
+          monitorId: incident.monitorId,
+          monitorName,
+          firstFailedAt: incident.firstFailedAt,
+          degradedAt: incident.degradedAt,
+          outageAt: incident.outageAt,
+          recoveredAt: incident.recoveredAt,
+          durationMs: Math.max(0, end - incident.firstFailedAt),
+          highestSeverity: incident.highestSeverity,
+        },
+      ];
     })
-    .sort((left, right) => (
-      right.firstFailedAt - left.firstFailedAt || compareText(left.id, right.id)
-    ));
+    .sort(
+      (left, right) => right.firstFailedAt - left.firstFailedAt || compareText(left.id, right.id),
+    );
 }
 
 function compareText(left: string, right: string): number {
@@ -233,11 +211,7 @@ function compareText(left: string, right: string): number {
   return 0;
 }
 
-function jsonResponse<T>(
-  body: T,
-  status: number,
-  headers: Record<string, string>,
-): Response {
+function jsonResponse<T>(body: T, status: number, headers: Record<string, string>): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: {

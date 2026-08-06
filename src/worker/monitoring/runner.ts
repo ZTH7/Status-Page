@@ -1,17 +1,8 @@
 import type { AppConfig, MonitorConfig } from "../../config/types";
 import { transitionMonitor } from "../../domain/status-machine";
 import { resolveThresholds } from "../../domain/thresholds";
-import type {
-  CheckResult,
-  ErrorCode,
-  MonitorState,
-  NotificationAction,
-} from "../../domain/types";
-import {
-  deleteExpiredChecks,
-  DuplicateCheckBatchError,
-  type PersistedCheck,
-} from "../storage/repository";
+import type { CheckResult, ErrorCode, MonitorState, NotificationAction } from "../../domain/types";
+import type { PersistCheckBatchResult, PersistedCheck } from "../storage/repository";
 
 interface SafeResultRecord {
   monitorId: string;
@@ -54,12 +45,11 @@ export interface RunChecksDependencies {
     monitorIds: readonly string[],
   ): Promise<Map<string, MonitorState>>;
   resolveLocation(): Promise<string>;
-  probeMonitor(
-    monitor: MonitorConfig,
-    scheduledAt: number,
-    location: string,
-  ): Promise<CheckResult>;
-  persistCheckBatch(db: D1Database, checks: readonly PersistedCheck[]): Promise<void>;
+  probeMonitor(monitor: MonitorConfig, scheduledAt: number, location: string): Promise<CheckResult>;
+  persistCheckBatch(
+    db: D1Database,
+    checks: readonly PersistedCheck[],
+  ): Promise<PersistCheckBatchResult>;
   log(record: SafeStructuredRecord): void;
 }
 
@@ -73,11 +63,13 @@ export interface RunChecksInput {
 export async function runChecks(input: RunChecksInput): Promise<RunSummary> {
   const { config, db, dependencies, scheduledAt } = input;
   const monitorIds = config.monitors.map((monitor) => monitor.id);
-  const states = await dependencies.loadMonitorStates(db, monitorIds);
-  const location = await dependencies.resolveLocation();
-  const pendingResults = config.monitors.map(async (monitor) => (
-    dependencies.probeMonitor(monitor, scheduledAt, location)
-  ));
+  const [states, location] = await Promise.all([
+    dependencies.loadMonitorStates(db, monitorIds),
+    dependencies.resolveLocation(),
+  ]);
+  const pendingResults = config.monitors.map(async (monitor) =>
+    dependencies.probeMonitor(monitor, scheduledAt, location),
+  );
   const settledResults = await Promise.allSettled(pendingResults);
   const results = settledResults.map((settled, index) => {
     const monitor = config.monitors[index];
@@ -106,41 +98,32 @@ export async function runChecks(input: RunChecksInput): Promise<RunSummary> {
   const counts = countResults(results);
   const safeResults = results.map(({ monitorId, errorCode }) => ({ monitorId, errorCode }));
 
+  let persisted: PersistCheckBatchResult;
   try {
-    await dependencies.persistCheckBatch(db, checks);
+    persisted = await dependencies.persistCheckBatch(db, checks);
   } catch (error) {
-    if (error instanceof DuplicateCheckBatchError) {
-      const duplicateSummary = makeSummary(scheduledAt, location, counts, [], true);
-      dependencies.log(runRecord("monitoring-run", duplicateSummary, safeResults));
-      return duplicateSummary;
-    }
-
     const failedSummary = makeSummary(scheduledAt, location, counts, [], false);
     dependencies.log(runRecord("monitoring-storage-failed", failedSummary, safeResults));
     throw error;
   }
 
-  const notifications = checks.flatMap(({ transition }) => (
-    transition.notification === null ? [] : [transition.notification]
-  ));
-  const summary = makeSummary(scheduledAt, location, counts, notifications, false);
+  const appliedMonitorIds = new Set(persisted.appliedMonitorIds);
+  const notifications = checks.flatMap(({ result, transition }) =>
+    !appliedMonitorIds.has(result.monitorId) || transition.notification === null
+      ? []
+      : [transition.notification],
+  );
+  const duplicate = checks.length > 0 && appliedMonitorIds.size === 0;
+  const summary = makeSummary(scheduledAt, location, counts, notifications, duplicate);
   dependencies.log(runRecord("monitoring-run", summary, safeResults));
   return summary;
-}
-
-export function runRetention(db: D1Database, cutoffMs: number): Promise<number> {
-  return deleteExpiredChecks(db, cutoffMs);
 }
 
 export function logStructuredRecord(record: SafeStructuredRecord): void {
   console.log(JSON.stringify(record));
 }
 
-function unexpectedResult(
-  monitorId: string,
-  checkedAt: number,
-  location: string,
-): CheckResult {
+function unexpectedResult(monitorId: string, checkedAt: number, location: string): CheckResult {
   return {
     monitorId,
     checkedAt,

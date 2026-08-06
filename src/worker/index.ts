@@ -7,7 +7,6 @@ import { probeMonitor } from "./monitoring/probe";
 import {
   logStructuredRecord,
   runChecks,
-  runRetention,
   type RunSummary,
   type SafeStructuredRecord,
 } from "./monitoring/runner";
@@ -16,22 +15,11 @@ import {
   type DispatchNotificationsInput,
   type NotificationDispatchResult,
 } from "./notifications";
-import {
-  loadMonitorStates,
-  persistCheckBatch,
-} from "./storage/repository";
-
-const RETENTION_CRON = "17 3 * * *";
-const DAY_MS = 86_400_000;
+import { loadMonitorStates, persistCheckBatch } from "./storage/repository";
 
 export interface ScheduledDependencies {
   config: AppConfig;
-  runMonitoring(
-    scheduledAt: number,
-    config: AppConfig,
-    db: D1Database,
-  ): Promise<RunSummary>;
-  runRetention(db: D1Database, cutoffMs: number): Promise<number>;
+  runMonitoring(scheduledAt: number, config: AppConfig, db: D1Database): Promise<RunSummary>;
   dispatchNotifications(input: DispatchNotificationsInput): Promise<NotificationDispatchResult[]>;
   fetch: typeof fetch;
   log(record: SafeStructuredRecord): void;
@@ -43,13 +31,6 @@ export function createScheduledHandler(dependencies: ScheduledDependencies) {
     env: Env,
     ctx: ExecutionContext,
   ): Promise<void> => {
-    if (controller.cron === RETENTION_CRON) {
-      const cutoff = controller.scheduledTime
-        - dependencies.config.site.rawRetentionDays * DAY_MS;
-      await dependencies.runRetention(env.DB, cutoff);
-      return;
-    }
-
     const summary = await dependencies.runMonitoring(
       controller.scheduledTime,
       dependencies.config,
@@ -57,22 +38,24 @@ export function createScheduledHandler(dependencies: ScheduledDependencies) {
     );
     if (summary.duplicate) return;
 
-    const notificationPromise = dependencies.dispatchNotifications({
-      actions: summary.notifications,
-      monitors: dependencies.config.monitors,
-      site: dependencies.config.site,
-      env,
-      fetch: dependencies.fetch,
-    }).then((results) => {
-      for (const result of results) {
-        dependencies.log({
-          event: "notification-channel",
-          channel: result.channel,
-          status: result.status,
-          ...(result.reason === undefined ? {} : { reason: safeReason(result.reason) }),
-        });
-      }
-    });
+    const notificationPromise = dependencies
+      .dispatchNotifications({
+        actions: summary.notifications,
+        monitors: dependencies.config.monitors,
+        site: dependencies.config.site,
+        env,
+        fetch: dependencies.fetch,
+      })
+      .then((results) => {
+        for (const result of results) {
+          dependencies.log({
+            event: "notification-channel",
+            channel: result.channel,
+            status: result.status,
+            ...(result.reason === undefined ? {} : { reason: safeReason(result.reason) }),
+          });
+        }
+      });
     ctx.waitUntil(notificationPromise);
   };
 }
@@ -84,29 +67,26 @@ function safeReason(reason: string): "no-actions" | "not-configured" | "send-fai
 
 const scheduled = createScheduledHandler({
   config: appConfig,
-  runMonitoring: (scheduledAt, config, db) => runChecks({
-    scheduledAt,
-    config,
-    db,
-    dependencies: {
-      loadMonitorStates,
-      resolveLocation: () => resolveLocation(fetch),
-      probeMonitor: (monitor, checkedAt, location) => probeMonitor(
-        monitor,
-        checkedAt,
-        location,
-        {
-          fetch,
-          now: Date.now,
-          setTimer: setTimeout,
-          clearTimer: clearTimeout,
-        },
-      ),
-      persistCheckBatch,
-      log: logStructuredRecord,
-    },
-  }),
-  runRetention,
+  runMonitoring: (scheduledAt, config, db) =>
+    runChecks({
+      scheduledAt,
+      config,
+      db,
+      dependencies: {
+        loadMonitorStates,
+        resolveLocation: () => resolveLocation(fetch),
+        probeMonitor: (monitor, checkedAt, location) =>
+          probeMonitor(monitor, checkedAt, location, {
+            fetch,
+            now: Date.now,
+            setTimer: setTimeout,
+            clearTimer: clearTimeout,
+            userAgent: config.site.userAgent,
+          }),
+        persistCheckBatch,
+        log: logStructuredRecord,
+      },
+    }),
   dispatchNotifications,
   fetch,
   log: logStructuredRecord,

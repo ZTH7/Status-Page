@@ -29,8 +29,8 @@ FORM: Composition B environment with composition C card, logo, and state languag
   --status-outage-fill: #f3c7b9;
   --status-unknown-foreground: #57493f;
   --status-unknown-fill: #e1d4b4;
-  --font-display: 'Pixelify Sans Variable', ui-rounded, sans-serif;
-  --font-data: 'Geist Variable', system-ui, sans-serif;
+  --font-display: "Pixelify Sans Variable", ui-rounded, sans-serif;
+  --font-data: "Geist Variable", system-ui, sans-serif;
   --space-1: 8px;
   --space-2: 12px;
   --space-3: 16px;
@@ -42,7 +42,7 @@ FORM: Composition B environment with composition C card, logo, and state languag
   color: var(--ink);
 }
 
-:root.theme-stardew-inspired[data-color-mode='dark'] {
+:root.theme-stardew-inspired[data-color-mode="dark"] {
   color-scheme: dark;
   --farm-sky: #182f48;
   --timber: #825638;
@@ -87,13 +87,13 @@ FORM: Composition B environment with composition C card, logo, and state languag
   inset: 0;
   display: block;
   background-color: var(--farm-sky);
-  background-image: url('./assets/farm-day-desktop.webp');
+  background-image: url("./assets/farm-day-desktop.webp");
   background-position: center;
   background-size: cover;
 }
 
-:root.theme-stardew-inspired[data-color-mode='dark'] .stardew-environment {
-  background-image: url('./assets/farm-night-desktop.webp');
+:root.theme-stardew-inspired[data-color-mode="dark"] .stardew-environment {
+  background-image: url("./assets/farm-night-desktop.webp");
 }
 
 .theme-stardew-inspired .site-header,
@@ -249,19 +249,19 @@ FORM: Composition B environment with composition C card, logo, and state languag
   stroke-width: 2;
 }
 
-.theme-stardew-inspired [data-level='operational'].overall-status__mark {
+.theme-stardew-inspired [data-level="operational"].overall-status__mark {
   background: var(--status-operational-base);
 }
 
-.theme-stardew-inspired [data-level='degraded'].overall-status__mark {
+.theme-stardew-inspired [data-level="degraded"].overall-status__mark {
   background: var(--status-degraded-base);
 }
 
-.theme-stardew-inspired [data-level='outage'].overall-status__mark {
+.theme-stardew-inspired [data-level="outage"].overall-status__mark {
   background: var(--status-outage-base);
 }
 
-.theme-stardew-inspired [data-level='unknown'].overall-status__mark {
+.theme-stardew-inspired [data-level="unknown"].overall-status__mark {
   background: var(--status-unknown-base);
 }
 
@@ -437,22 +437,22 @@ FORM: Composition B environment with composition C card, logo, and state languag
   background: currentColor;
 }
 
-.theme-stardew-inspired [data-level='operational'].status-badge {
+.theme-stardew-inspired [data-level="operational"].status-badge {
   background: var(--status-operational-fill);
   color: var(--status-operational-foreground);
 }
 
-.theme-stardew-inspired [data-level='degraded'].status-badge {
+.theme-stardew-inspired [data-level="degraded"].status-badge {
   background: var(--status-degraded-fill);
   color: var(--status-degraded-foreground);
 }
 
-.theme-stardew-inspired [data-level='outage'].status-badge {
+.theme-stardew-inspired [data-level="outage"].status-badge {
   background: var(--status-outage-fill);
   color: var(--status-outage-foreground);
 }
 
-.theme-stardew-inspired [data-level='unknown'].status-badge {
+.theme-stardew-inspired [data-level="unknown"].status-badge {
   background: var(--status-unknown-fill);
   color: var(--status-unknown-foreground);
 }
@@ -465,25 +465,26 @@ FORM: Composition B environment with composition C card, logo, and state languag
   border: 1px solid var(--timber-dark);
   border-radius: 1px;
   background: var(--status-unknown-base);
-  transition: height var(--motion-step);
+  transform-origin: bottom;
+  transition: transform var(--motion-step);
 }
 
-.theme-stardew-inspired .history-day[data-level='operational'] > span {
+.theme-stardew-inspired .history-day[data-level="operational"] > span {
   background: var(--status-operational-base);
 }
 
-.theme-stardew-inspired .history-day[data-level='degraded'] > span {
+.theme-stardew-inspired .history-day[data-level="degraded"] > span {
   background: var(--status-degraded-base);
 }
 
-.theme-stardew-inspired .history-day[data-level='outage'] > span {
+.theme-stardew-inspired .history-day[data-level="outage"] > span {
   background: var(--status-outage-base);
 }
 
 .theme-stardew-inspired .history-day:hover > span,
 .theme-stardew-inspired .history-day:focus-visible > span,
-.theme-stardew-inspired .history-day[aria-expanded='true'] > span {
-  height: 20px;
+.theme-stardew-inspired .history-day[aria-expanded="true"] > span {
+  transform: scaleY(1.25);
 }
 
 .theme-stardew-inspired .history-day:focus-visible {
@@ -557,11 +558,11 @@ FORM: Composition B environment with composition C card, logo, and state languag
 
 @media (max-width: 45rem) {
   .theme-stardew-inspired .stardew-environment {
-    background-image: url('./assets/farm-day-mobile.webp');
+    background-image: url("./assets/farm-day-mobile.webp");
   }
 
-  :root.theme-stardew-inspired[data-color-mode='dark'] .stardew-environment {
-    background-image: url('./assets/farm-night-mobile.webp');
+  :root.theme-stardew-inspired[data-color-mode="dark"] .stardew-environment {
+    background-image: url("./assets/farm-night-mobile.webp");
   }
 
   .theme-stardew-inspired .load-state,

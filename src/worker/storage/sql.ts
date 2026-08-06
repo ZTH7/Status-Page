@@ -1,16 +1,3 @@
-export const INSERT_CHECK_RESULT = `
-  INSERT INTO check_results (
-    monitor_id,
-    checked_at,
-    success,
-    http_status,
-    status_text,
-    response_ms,
-    location,
-    error_code
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-`;
-
 export const UPSERT_DAILY_SUMMARY = `
   INSERT INTO daily_summaries (
     monitor_id,
@@ -21,7 +8,14 @@ export const UPSERT_DAILY_SUMMARY = `
     response_time_sum,
     response_count,
     highest_severity
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  )
+  SELECT ?, ?, ?, ?, ?, ?, ?, ?
+  WHERE EXISTS (
+    SELECT 1
+    FROM monitor_state
+    WHERE monitor_id = ?
+      AND latest_checked_at = ?
+  )
   ON CONFLICT(monitor_id, day, location) DO UPDATE SET
     check_count = daily_summaries.check_count + excluded.check_count,
     failed_check_count = daily_summaries.failed_check_count + excluded.failed_check_count,
@@ -116,11 +110,6 @@ export const RECOVER_INCIDENT = `
       WHERE monitor_id = ?
         AND latest_checked_at = ?
     )
-`;
-
-export const DELETE_EXPIRED_CHECKS = `
-  DELETE FROM check_results
-  WHERE checked_at < ?
 `;
 
 function placeholders(count: number): string {

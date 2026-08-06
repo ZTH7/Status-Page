@@ -22,7 +22,6 @@ const API_CONFIG: AppConfig = {
     theme: "stardew-inspired",
     colorMode: "dark",
     historyDays: 3,
-    rawRetentionDays: 777,
     requestTimeoutSeconds: 19,
     thresholds: {
       degradedAfterFailures: 7,
@@ -70,10 +69,7 @@ interface ObservedQuery {
   bindings: unknown[];
 }
 
-function databaseObservingBindings(
-  db: D1Database,
-  observed: ObservedQuery[],
-): D1Database {
+function databaseObservingBindings(db: D1Database, observed: ObservedQuery[]): D1Database {
   return new Proxy(db, {
     get(target, property, receiver) {
       if (property === "prepare") {
@@ -93,9 +89,7 @@ function databaseObservingBindings(
                 statementProperty,
                 statementReceiver,
               ) as unknown;
-              return typeof value === "function"
-                ? value.bind(statementTarget)
-                : value;
+              return typeof value === "function" ? value.bind(statementTarget) : value;
             },
           });
         };
@@ -124,7 +118,6 @@ function databaseFailingWith(db: D1Database, message: string): D1Database {
 
 async function clearBusinessTables(): Promise<void> {
   await env.DB.batch([
-    env.DB.prepare("DELETE FROM check_results"),
     env.DB.prepare("DELETE FROM monitor_state"),
     env.DB.prepare("DELETE FROM daily_summaries"),
     env.DB.prepare("DELETE FROM incidents"),
@@ -154,35 +147,77 @@ async function seedPublicSnapshot(): Promise<void> {
 
   await env.DB.batch([
     state.bind(
-      "private", "outage", 4, 0, Date.UTC(2026, 7, 5, 12),
-      Date.UTC(2026, 7, 5, 17), 0, 504,
-      "PRIVATE upstream status", 480, "lhr", "timeout",
+      "private",
+      "outage",
+      4,
+      0,
+      Date.UTC(2026, 7, 5, 12),
+      Date.UTC(2026, 7, 5, 17),
+      0,
+      504,
+      "PRIVATE upstream status",
+      480,
+      "lhr",
+      "timeout",
     ),
     state.bind(
-      "linkable", "operational", 0, 0, null,
-      Date.UTC(2026, 7, 5, 16), 1, 200,
-      "INTERNAL success text", 42, "sfo", null,
+      "linkable",
+      "operational",
+      0,
+      0,
+      null,
+      Date.UTC(2026, 7, 5, 16),
+      1,
+      200,
+      "INTERNAL success text",
+      42,
+      "sfo",
+      null,
     ),
     state.bind(
-      "not-configured", "outage", 99, 0, Date.UTC(2026, 7, 5),
-      Date.UTC(2026, 7, 5, 18), 0, 500,
-      "must not influence overall", 999, "secret-pop", "network",
+      "not-configured",
+      "outage",
+      99,
+      0,
+      Date.UTC(2026, 7, 5),
+      Date.UTC(2026, 7, 5, 18),
+      0,
+      500,
+      "must not influence overall",
+      999,
+      "secret-pop",
+      "network",
     ),
     summary.bind("private", "2026-08-04", "sfo", 5, 1, 300, 3, "degraded"),
     summary.bind("private", "2026-08-04", "lhr", 7, 2, 0, 0, "outage"),
     summary.bind("linkable", "2026-08-05", "sfo", 2, 0, 85, 2, "operational"),
     summary.bind("not-configured", "2026-08-05", "secret-pop", 1, 1, 999, 1, "outage"),
     incident.bind(
-      "private:1785931200000", "private", Date.UTC(2026, 7, 5, 12),
-      Date.UTC(2026, 7, 5, 13), Date.UTC(2026, 7, 5, 14), null, "outage",
+      "private:1785931200000",
+      "private",
+      Date.UTC(2026, 7, 5, 12),
+      Date.UTC(2026, 7, 5, 13),
+      Date.UTC(2026, 7, 5, 14),
+      null,
+      "outage",
     ),
     incident.bind(
-      "linkable:1785834000000", "linkable", Date.UTC(2026, 7, 4, 9),
-      Date.UTC(2026, 7, 4, 9), null, Date.UTC(2026, 7, 4, 10), "degraded",
+      "linkable:1785834000000",
+      "linkable",
+      Date.UTC(2026, 7, 4, 9),
+      Date.UTC(2026, 7, 4, 9),
+      null,
+      Date.UTC(2026, 7, 4, 10),
+      "degraded",
     ),
     incident.bind(
-      "excluded-monitor", "not-configured", Date.UTC(2026, 7, 5, 15),
-      Date.UTC(2026, 7, 5, 15), null, null, "degraded",
+      "excluded-monitor",
+      "not-configured",
+      Date.UTC(2026, 7, 5, 15),
+      Date.UTC(2026, 7, 5, 15),
+      null,
+      null,
+      "degraded",
     ),
   ]);
 }
@@ -303,17 +338,38 @@ describe("public status response", () => {
     });
 
     expect(Object.keys(response).sort()).toEqual([
-      "generatedAt", "incidents", "latestCompletedAt", "monitors", "overall", "site",
+      "generatedAt",
+      "incidents",
+      "latestCompletedAt",
+      "monitors",
+      "overall",
+      "site",
     ]);
     expect(Object.keys(response.site).sort()).toEqual([
-      "colorMode", "historyDays", "labels", "logo", "theme", "title", "url",
+      "colorMode",
+      "historyDays",
+      "labels",
+      "logo",
+      "theme",
+      "title",
+      "url",
     ]);
     expect(Object.keys(response.monitors[0]!.latest!).sort()).toEqual([
-      "checkedAt", "httpStatus", "location", "responseMs",
+      "checkedAt",
+      "httpStatus",
+      "location",
+      "responseMs",
     ]);
     expect(Object.keys(response.incidents[0]!).sort()).toEqual([
-      "degradedAt", "durationMs", "firstFailedAt", "highestSeverity", "id",
-      "monitorId", "monitorName", "outageAt", "recoveredAt",
+      "degradedAt",
+      "durationMs",
+      "firstFailedAt",
+      "highestSeverity",
+      "id",
+      "monitorId",
+      "monitorName",
+      "outageAt",
+      "recoveredAt",
     ]);
 
     const serialized = JSON.stringify(response);
@@ -333,11 +389,13 @@ describe("public status response", () => {
     const summaryRead = observed.find(({ sql }) => sql.includes("FROM daily_summaries"));
     const incidentRead = observed.find(({ sql }) => sql.includes("FROM incidents"));
     expect(stateRead?.bindings).toEqual(["private", "linkable", "unknown"]);
-    expect(summaryRead?.bindings).toEqual([
-      "private", "linkable", "unknown", "2026-08-03",
-    ]);
+    expect(summaryRead?.bindings).toEqual(["private", "linkable", "unknown", "2026-08-03"]);
     expect(incidentRead?.bindings).toEqual([
-      "private", "linkable", "unknown", GENERATED_AT, WINDOW_START,
+      "private",
+      "linkable",
+      "unknown",
+      GENERATED_AT,
+      WINDOW_START,
     ]);
     expect(observed.some(({ sql }) => sql.includes("check_results"))).toBe(false);
   });
@@ -364,8 +422,13 @@ describe("status API routing", () => {
     );
     expect(response.headers.get("content-type")).toBe("application/json; charset=utf-8");
     expect(response.headers.get("x-content-type-options")).toBe("nosniff");
-    expect(Object.keys(await response.json() as object).sort()).toEqual([
-      "generatedAt", "incidents", "latestCompletedAt", "monitors", "overall", "site",
+    expect(Object.keys((await response.json()) as object).sort()).toEqual([
+      "generatedAt",
+      "incidents",
+      "latestCompletedAt",
+      "monitors",
+      "overall",
+      "site",
     ]);
   });
 

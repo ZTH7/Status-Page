@@ -1,7 +1,8 @@
 import type React from "react";
+import type { ThemeId } from "../config/types";
 
 export interface ThemeManifest {
-  id: "default" | "stardew-inspired";
+  id: ThemeId;
   rootClass: string;
   supportsColorMode: true;
   decorations: {

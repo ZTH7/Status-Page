@@ -1,9 +1,7 @@
 import type { CheckResult, MonitorState, MonitorTransition } from "../../domain/types";
 import { monitorStateFromRow, type MonitorStateRow } from "./rows";
 import {
-  DELETE_EXPIRED_CHECKS,
   ESCALATE_INCIDENT,
-  INSERT_CHECK_RESULT,
   INSERT_INCIDENT,
   RECOVER_INCIDENT,
   UPSERT_DAILY_SUMMARY,
@@ -16,12 +14,8 @@ export interface PersistedCheck {
   transition: MonitorTransition;
 }
 
-export class DuplicateCheckBatchError extends Error {
-  readonly name = "DuplicateCheckBatchError";
-
-  constructor(options?: ErrorOptions) {
-    super("The scheduled check batch has already been persisted.", options);
-  }
+export interface PersistCheckBatchResult {
+  appliedMonitorIds: readonly string[];
 }
 
 export async function loadMonitorStates(
@@ -35,109 +29,98 @@ export async function loadMonitorStates(
     .bind(...monitorIds)
     .all<MonitorStateRow>();
 
-  return new Map(result.results.map((row) => {
-    const state = monitorStateFromRow(row);
-    return [state.monitorId, state] as const;
-  }));
+  return new Map(
+    result.results.map((row) => {
+      const state = monitorStateFromRow(row);
+      return [state.monitorId, state] as const;
+    }),
+  );
 }
 
 export async function persistCheckBatch(
   db: D1Database,
   checks: readonly PersistedCheck[],
-): Promise<void> {
-  if (checks.length === 0) return;
+): Promise<PersistCheckBatchResult> {
+  if (checks.length === 0) return { appliedMonitorIds: [] };
 
   const statements: D1PreparedStatement[] = [];
+  const stateStatementIndexes = new Map<number, string>();
 
   for (const check of checks) {
     const { result, transition } = check;
-    statements.push(
-      db.prepare(INSERT_CHECK_RESULT).bind(
-        result.monitorId,
-        result.checkedAt,
-        result.success ? 1 : 0,
-        result.httpStatus,
-        result.statusText,
-        result.responseMs,
-        result.location,
-        result.errorCode,
-      ),
-      db.prepare(UPSERT_DAILY_SUMMARY).bind(
-        result.monitorId,
-        new Date(result.checkedAt).toISOString().slice(0, 10),
-        result.location || "unknown",
-        1,
-        result.success ? 0 : 1,
-        result.responseMs ?? 0,
-        result.responseMs === null ? 0 : 1,
-        transition.dailySeverity,
-      ),
-    );
-
     if (transition.stale) continue;
 
     const state = transition.next;
-    statements.push(db.prepare(UPSERT_MONITOR_STATE).bind(
-      state.monitorId,
-      state.level,
-      state.consecutiveFailures,
-      state.consecutiveSuccesses,
-      state.firstFailedAt,
-      state.latest.checkedAt,
-      state.latest.success ? 1 : 0,
-      state.latest.httpStatus,
-      state.latest.statusText,
-      state.latest.responseMs,
-      state.latest.location,
-      state.latest.errorCode,
-    ));
+    stateStatementIndexes.set(statements.length, result.monitorId);
+    statements.push(
+      db
+        .prepare(UPSERT_MONITOR_STATE)
+        .bind(
+          state.monitorId,
+          state.level,
+          state.consecutiveFailures,
+          state.consecutiveSuccesses,
+          state.firstFailedAt,
+          state.latest.checkedAt,
+          state.latest.success ? 1 : 0,
+          state.latest.httpStatus,
+          state.latest.statusText,
+          state.latest.responseMs,
+          state.latest.location,
+          state.latest.errorCode,
+        ),
+    );
+    statements.push(
+      db
+        .prepare(UPSERT_DAILY_SUMMARY)
+        .bind(
+          result.monitorId,
+          new Date(result.checkedAt).toISOString().slice(0, 10),
+          result.location || "unknown",
+          1,
+          result.success ? 0 : 1,
+          result.responseMs ?? 0,
+          result.responseMs === null ? 0 : 1,
+          transition.dailySeverity,
+          result.monitorId,
+          result.checkedAt,
+        ),
+    );
 
     const incident = transition.incident;
     if (incident?.type === "open") {
-      statements.push(db.prepare(INSERT_INCIDENT).bind(
-        incident.incidentId,
-        result.monitorId,
-        incident.firstFailedAt,
-        incident.degradedAt,
-        result.monitorId,
-        result.checkedAt,
-      ));
+      statements.push(
+        db
+          .prepare(INSERT_INCIDENT)
+          .bind(
+            incident.incidentId,
+            result.monitorId,
+            incident.firstFailedAt,
+            incident.degradedAt,
+            result.monitorId,
+            result.checkedAt,
+          ),
+      );
     } else if (incident?.type === "escalate") {
-      statements.push(db.prepare(ESCALATE_INCIDENT).bind(
-        incident.outageAt,
-        incident.incidentId,
-        result.monitorId,
-        result.checkedAt,
-      ));
+      statements.push(
+        db
+          .prepare(ESCALATE_INCIDENT)
+          .bind(incident.outageAt, incident.incidentId, result.monitorId, result.checkedAt),
+      );
     } else if (incident?.type === "recover") {
-      statements.push(db.prepare(RECOVER_INCIDENT).bind(
-        incident.recoveredAt,
-        incident.incidentId,
-        result.monitorId,
-        result.checkedAt,
-      ));
+      statements.push(
+        db
+          .prepare(RECOVER_INCIDENT)
+          .bind(incident.recoveredAt, incident.incidentId, result.monitorId, result.checkedAt),
+      );
     }
   }
 
-  try {
-    await db.batch(statements);
-  } catch (error) {
-    if (
-      error instanceof Error
-      && error.message.includes(
-        "UNIQUE constraint failed: check_results.monitor_id, check_results.checked_at",
-      )
-    ) {
-      throw new DuplicateCheckBatchError({ cause: error });
-    }
-    throw error;
-  }
-}
+  if (statements.length === 0) return { appliedMonitorIds: [] };
 
-export async function deleteExpiredChecks(
-  db: D1Database,
-  cutoffMs: number,
-): Promise<number> {
-  const result = await db.prepare(DELETE_EXPIRED_CHECKS).bind(cutoffMs).run();
-  return result.meta.changes;
+  const results = await db.batch(statements);
+  const appliedMonitorIds = [...stateStatementIndexes].flatMap(([index, monitorId]) =>
+    (results[index]?.meta.changes ?? 0) > 0 ? [monitorId] : [],
+  );
+  return { appliedMonitorIds };
 }

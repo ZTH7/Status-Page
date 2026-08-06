@@ -100,7 +100,7 @@ describe("dispatchNotifications", () => {
     expect(JSON.stringify(telegram)).toContain("Degraded now");
     expect(JSON.stringify(telegram)).toContain("🟡");
     expect(JSON.stringify(discord)).toContain("Degraded now");
-    expect(discord).toMatchObject({ embeds: [{ color: 0xFEE75C }] });
+    expect(discord).toMatchObject({ embeds: [{ color: 0xfee75c }] });
     expect(JSON.stringify([slack, telegram, discord])).not.toContain("Outage");
   });
 
@@ -120,7 +120,7 @@ describe("dispatchNotifications", () => {
     expect(JSON.stringify(slack)).toContain("🟢");
     expect(JSON.stringify(telegram)).toContain("Operational now");
     expect(JSON.stringify(telegram)).toContain("🟢");
-    expect(discord).toMatchObject({ embeds: [{ color: 0x57F287 }] });
+    expect(discord).toMatchObject({ embeds: [{ color: 0x57f287 }] });
   });
 
   it("includes the monitor method and URL, action time, and site title and URL in every channel payload", async () => {
@@ -153,10 +153,12 @@ describe("dispatchNotifications", () => {
 
     await dispatchNotifications({
       actions: actions({ type: "failure", monitorId: "api", at: ACTION_TIME }),
-      monitors: [monitor({
-        name: "API <https://attacker.example|Injected> [replace](https://attacker.example) @everyone",
-        url: "https://api.example.test/health",
-      })],
+      monitors: [
+        monitor({
+          name: "API <https://attacker.example|Injected> [replace](https://attacker.example) @everyone",
+          url: "https://api.example.test/health",
+        }),
+      ],
       site: site({
         title: "Status <!channel> [replace](https://attacker.example) @everyone",
         url: "https://status.example.test/legitimate",
@@ -167,8 +169,9 @@ describe("dispatchNotifications", () => {
     });
 
     const [slack, telegram, discord] = await sentPayloads(fetcher);
-    const slackText = String((slack as { blocks?: Array<{ text?: { text?: string } }> })
-      .blocks?.[0]?.text?.text);
+    const slackText = String(
+      (slack as { blocks?: Array<{ text?: { text?: string } }> }).blocks?.[0]?.text?.text,
+    );
     expect(slackText).toContain("&lt;!channel&gt;");
     expect(slackText).toContain("&lt;https://attacker.example|Injected&gt;");
     expect(slackText).not.toContain("<!channel>");
@@ -179,12 +182,19 @@ describe("dispatchNotifications", () => {
     expect(text).toContain("&lt;");
     expect(text).not.toContain("API <https://attacker.example|Injected>");
 
-    const discordEmbed = (discord as {
-      allowed_mentions?: { parse?: string[] };
-      embeds?: Array<{ title?: string; url?: string; fields?: Array<{ name: string; value: string }> }>;
-    }).embeds?.[0];
+    const discordEmbed = (
+      discord as {
+        allowed_mentions?: { parse?: string[] };
+        embeds?: Array<{
+          title?: string;
+          url?: string;
+          fields?: Array<{ name: string; value: string }>;
+        }>;
+      }
+    ).embeds?.[0];
     const discordSite = discordEmbed?.fields?.find((field) => field.name === "Site")?.value ?? "";
-    const discordMonitor = discordEmbed?.fields?.find((field) => field.name === "Monitor")?.value ?? "";
+    const discordMonitor =
+      discordEmbed?.fields?.find((field) => field.name === "Monitor")?.value ?? "";
     expect(discord).toMatchObject({ allowed_mentions: { parse: [] } });
     expect(discordEmbed?.title).toContain("Degraded \\<\\!channel\\>");
     expect(discordEmbed?.url).toBe("https://status.example.test/legitimate");
@@ -208,11 +218,14 @@ describe("dispatchNotifications", () => {
     });
 
     const [slack, , discord] = await sentPayloads(fetcher);
-    const slackText = String((slack as { blocks?: Array<{ text?: { text?: string } }> })
-      .blocks?.[0]?.text?.text);
-    const discordEmbed = (discord as {
-      embeds?: Array<{ url?: string; fields?: Array<{ name: string; value: string }> }>;
-    }).embeds?.[0];
+    const slackText = String(
+      (slack as { blocks?: Array<{ text?: { text?: string } }> }).blocks?.[0]?.text?.text,
+    );
+    const discordEmbed = (
+      discord as {
+        embeds?: Array<{ url?: string; fields?: Array<{ name: string; value: string }> }>;
+      }
+    ).embeds?.[0];
     const discordSite = discordEmbed?.fields?.find((field) => field.name === "Site")?.value ?? "";
 
     expect(slackText).not.toContain("<javascript:alert(1)|");
@@ -243,22 +256,70 @@ describe("dispatchNotifications", () => {
   });
 
   it("allows other channels to send when one channel returns non-2xx", async () => {
-    const fetcher = vi.fn(async (url: RequestInfo | URL) => new Response(null, {
-      status: String(url).includes("slack") ? 500 : 204,
-    })) as unknown as typeof fetch;
+    const fetcher = vi.fn(
+      async (url: RequestInfo | URL) =>
+        new Response(null, {
+          status: String(url).includes("slack") ? 500 : 204,
+        }),
+    ) as unknown as typeof fetch;
 
-    await expect(dispatchNotifications({
-      actions: actions({ type: "failure", monitorId: "api", at: ACTION_TIME }),
-      monitors: [monitor()],
-      site: site(),
-      env: configuredEnv(),
-      fetch: fetcher,
-    })).resolves.toEqual([
+    await expect(
+      dispatchNotifications({
+        actions: actions({ type: "failure", monitorId: "api", at: ACTION_TIME }),
+        monitors: [monitor()],
+        site: site(),
+        env: configuredEnv(),
+        fetch: fetcher,
+      }),
+    ).resolves.toEqual([
       { channel: "slack", status: "failed", reason: "send-failed" },
       { channel: "telegram", status: "sent" },
       { channel: "discord", status: "sent" },
     ]);
     expect(vi.mocked(fetcher)).toHaveBeenCalledTimes(3);
+  });
+
+  it("chunks 25 actions within Telegram and Discord message limits", async () => {
+    const monitors = Array.from({ length: 25 }, (_, index) =>
+      monitor({
+        id: `service-${index}`,
+        name: `Service ${index}`,
+      }),
+    );
+    const notificationActions = monitors.map(({ id }) => ({
+      type: "failure" as const,
+      monitorId: id,
+      at: ACTION_TIME,
+    }));
+    const fetcher = okFetch();
+
+    await expect(
+      dispatchNotifications({
+        actions: notificationActions,
+        monitors,
+        site: site(),
+        env: configuredEnv(),
+        fetch: fetcher,
+      }),
+    ).resolves.toEqual([
+      { channel: "slack", status: "sent" },
+      { channel: "telegram", status: "sent" },
+      { channel: "discord", status: "sent" },
+    ]);
+
+    const calls = vi.mocked(fetcher).mock.calls;
+    const telegramPayloads = calls
+      .filter(([url]) => String(url).includes("api.telegram.org"))
+      .map(([, init]) => JSON.parse(String(init?.body)) as { text: string });
+    const discordPayloads = calls
+      .filter(([url]) => String(url).includes("discord.test"))
+      .map(([, init]) => JSON.parse(String(init?.body)) as { embeds: unknown[] });
+
+    expect(telegramPayloads.length).toBeGreaterThan(1);
+    expect(telegramPayloads.every(({ text }) => text.length <= 4_000)).toBe(true);
+    expect(discordPayloads).toHaveLength(3);
+    expect(discordPayloads.every(({ embeds }) => embeds.length <= 10)).toBe(true);
+    expect(discordPayloads.reduce((total, { embeds }) => total + embeds.length, 0)).toBe(25);
   });
 
   it("isolates synchronous and rejected fetch exceptions without returning their values", async () => {
@@ -288,10 +349,12 @@ describe("dispatchNotifications", () => {
 
   it("treats a false response ok value as failure without reading its body or leaking it", async () => {
     const body = "private response body";
-    const fetcher = vi.fn(async (url: RequestInfo | URL) => new Response(
-      String(url).includes("slack") ? body : null,
-      { status: String(url).includes("slack") ? 500 : 204 },
-    )) as unknown as typeof fetch;
+    const fetcher = vi.fn(
+      async (url: RequestInfo | URL) =>
+        new Response(String(url).includes("slack") ? body : null, {
+          status: String(url).includes("slack") ? 500 : 204,
+        }),
+    ) as unknown as typeof fetch;
 
     const result = await dispatchNotifications({
       actions: actions({ type: "failure", monitorId: "api", at: ACTION_TIME }),
@@ -332,24 +395,33 @@ describe("channel senders", () => {
   it.each([
     [
       "Slack synchronous exception",
-      () => sendSlack(
-        { webhookUrl: "https://hooks.slack.test/private", blocks: [] },
-        vi.fn(() => { throw new Error("private Slack URL and response"); }) as unknown as typeof fetch,
-      ),
+      () =>
+        sendSlack(
+          { webhookUrl: "https://hooks.slack.test/private", blocks: [] },
+          vi.fn(() => {
+            throw new Error("private Slack URL and response");
+          }) as unknown as typeof fetch,
+        ),
     ],
     [
       "Telegram rejected exception",
-      () => sendTelegram(
-        { token: "private-token", chatId: "private-chat", text: "message" },
-        vi.fn(() => Promise.reject(new Error("private Telegram token"))) as unknown as typeof fetch,
-      ),
+      () =>
+        sendTelegram(
+          { token: "private-token", chatId: "private-chat", text: "message" },
+          vi.fn(() =>
+            Promise.reject(new Error("private Telegram token")),
+          ) as unknown as typeof fetch,
+        ),
     ],
     [
       "Discord non-2xx response",
-      () => sendDiscord(
-        { webhookUrl: "https://discord.test/private", embeds: [] },
-        vi.fn(async () => new Response("private Discord response", { status: 500 })) as unknown as typeof fetch,
-      ),
+      () =>
+        sendDiscord(
+          { webhookUrl: "https://discord.test/private", embeds: [] },
+          vi.fn(
+            async () => new Response("private Discord response", { status: 500 }),
+          ) as unknown as typeof fetch,
+        ),
     ],
   ] as const)("rejects %s with a constant safe error", async (_name, send) => {
     const rejection = await send().catch((error: unknown) => error);

@@ -1,0 +1,9 @@
+dist/
+node_modules/
+.wrangler/
+src/generated/
+src/worker-configuration.d.ts
+public/theme-bootstrap.js
+docs/superpowers/
+migration-backups/
+old_project/

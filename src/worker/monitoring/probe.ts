@@ -7,6 +7,7 @@ export interface ProbeDependencies {
   now: () => number;
   setTimer: typeof setTimeout;
   clearTimer: typeof clearTimeout;
+  userAgent?: string;
 }
 
 function normalizeError(value: unknown, timedOut: boolean): ErrorCode {
@@ -19,7 +20,11 @@ function normalizeError(value: unknown, timedOut: boolean): ErrorCode {
   }
 
   const message = value.message.toLowerCase();
-  if (message.includes("dns") || message.includes("host lookup") || message.includes("name resolution")) {
+  if (
+    message.includes("dns") ||
+    message.includes("host lookup") ||
+    message.includes("name resolution")
+  ) {
     return "dns";
   }
   if (message.includes("tls") || message.includes("ssl") || message.includes("certificate")) {
@@ -47,7 +52,7 @@ export async function probeMonitor(
     const response = await dependencies.fetch(monitor.url, {
       method: monitor.method,
       redirect: monitor.followRedirect ? "follow" : "manual",
-      headers: { "User-Agent": "CFStatusPage/2" },
+      headers: { "User-Agent": dependencies.userAgent ?? appConfig.site.userAgent },
       signal: controller.signal,
     });
     const responseMs = Math.max(0, dependencies.now() - startedAt);

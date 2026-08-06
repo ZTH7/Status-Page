@@ -3,10 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { MonitorConfig } from "../../src/config/types";
 import type { CheckResult } from "../../src/domain/types";
 import { resolveLocation } from "../../src/worker/monitoring/location";
-import {
-  probeMonitor,
-  type ProbeDependencies,
-} from "../../src/worker/monitoring/probe";
+import { probeMonitor, type ProbeDependencies } from "../../src/worker/monitoring/probe";
 
 const CHECKED_AT = 1_785_931_200_000;
 
@@ -27,7 +24,10 @@ function response(status: number, statusText = "OK"): Response {
   return new Response(null, { status, statusText });
 }
 
-function timerDependencies(fetcher: typeof fetch, times: number[]): {
+function timerDependencies(
+  fetcher: typeof fetch,
+  times: number[],
+): {
   dependencies: ProbeDependencies;
   delays: number[];
   cleared: unknown[];
@@ -95,7 +95,9 @@ describe("probeMonitor", () => {
     const fetcher = vi.fn(async () => response(503, "Unavailable")) as unknown as typeof fetch;
     const timer = timerDependencies(fetcher, [5, 8]);
 
-    await expect(probeMonitor(monitor(), CHECKED_AT, "unknown", timer.dependencies)).resolves.toMatchObject({
+    await expect(
+      probeMonitor(monitor(), CHECKED_AT, "unknown", timer.dependencies),
+    ).resolves.toMatchObject({
       success: false,
       httpStatus: 503,
       statusText: "Unavailable",
@@ -108,7 +110,12 @@ describe("probeMonitor", () => {
     const manualFetch = vi.fn(async () => response(200)) as unknown as typeof fetch;
     const followFetch = vi.fn(async () => response(200)) as unknown as typeof fetch;
 
-    await probeMonitor(monitor(), CHECKED_AT, "SJC", timerDependencies(manualFetch, [0, 1]).dependencies);
+    await probeMonitor(
+      monitor(),
+      CHECKED_AT,
+      "SJC",
+      timerDependencies(manualFetch, [0, 1]).dependencies,
+    );
     await probeMonitor(
       monitor({ followRedirect: true }),
       CHECKED_AT,
@@ -126,19 +133,21 @@ describe("probeMonitor", () => {
     );
   });
 
-  it("sends the configured HEAD method and the status-page user agent", async () => {
+  it("sends the configured HEAD method and custom status-page user agent", async () => {
     const fetcher = vi.fn(async () => response(204, "No Content")) as unknown as typeof fetch;
+    const timer = timerDependencies(fetcher, [10, 10]);
+    timer.dependencies.userAgent = "MyStatusProbe/1.0";
 
     await probeMonitor(
       monitor({ method: "HEAD", expectStatus: 204 }),
       CHECKED_AT,
       "SJC",
-      timerDependencies(fetcher, [10, 10]).dependencies,
+      timer.dependencies,
     );
 
     expect(fetcher).toHaveBeenCalledWith(
       "https://status.example.test/health",
-      expect.objectContaining({ method: "HEAD", headers: { "User-Agent": "CFStatusPage/2" } }),
+      expect.objectContaining({ method: "HEAD", headers: { "User-Agent": "MyStatusProbe/1.0" } }),
     );
   });
 
@@ -161,9 +170,14 @@ describe("probeMonitor", () => {
   });
 
   it("returns timeout without raw error text when its abort timer fires and clears the timer", async () => {
-    const fetcher = vi.fn((_input: RequestInfo | URL, init?: RequestInit) => new Promise<Response>((_resolve, reject) => {
-      init?.signal?.addEventListener("abort", () => reject(new DOMException("private timeout detail", "AbortError")));
-    })) as unknown as typeof fetch;
+    const fetcher = vi.fn(
+      (_input: RequestInfo | URL, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () =>
+            reject(new DOMException("private timeout detail", "AbortError")),
+          );
+        }),
+    ) as unknown as typeof fetch;
     const timer = timerDependencies(fetcher, [10]);
     const pending = probeMonitor(monitor(), CHECKED_AT, "SJC", timer.dependencies);
 
@@ -182,9 +196,14 @@ describe("probeMonitor", () => {
   });
 
   it("classifies a TypeError raised after its timer abort as timeout", async () => {
-    const fetcher = vi.fn((_input: RequestInfo | URL, init?: RequestInit) => new Promise<Response>((_resolve, reject) => {
-      init?.signal?.addEventListener("abort", () => reject(new TypeError("socket closed after abort")));
-    })) as unknown as typeof fetch;
+    const fetcher = vi.fn(
+      (_input: RequestInfo | URL, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () =>
+            reject(new TypeError("socket closed after abort")),
+          );
+        }),
+    ) as unknown as typeof fetch;
     const timer = timerDependencies(fetcher, [10]);
     const pending = probeMonitor(monitor(), CHECKED_AT, "SJC", timer.dependencies);
 
@@ -217,7 +236,9 @@ describe("probeMonitor", () => {
 
 describe("resolveLocation", () => {
   it("returns the first valid colo line from a successful trace response", async () => {
-    const fetcher = vi.fn(async () => new Response("fl=29f\ncolo=SJC\ncolo=LAX\n", { status: 200 })) as unknown as typeof fetch;
+    const fetcher = vi.fn(
+      async () => new Response("fl=29f\ncolo=SJC\ncolo=LAX\n", { status: 200 }),
+    ) as unknown as typeof fetch;
 
     await expect(resolveLocation(fetcher)).resolves.toBe("SJC");
     expect(fetcher).toHaveBeenCalledWith(
@@ -237,9 +258,14 @@ describe("resolveLocation", () => {
 
   it("returns unknown on trace timeout and leaves no timer pending", async () => {
     vi.useFakeTimers();
-    const fetcher = vi.fn((_input: RequestInfo | URL, init?: RequestInit) => new Promise<Response>((_resolve, reject) => {
-      init?.signal?.addEventListener("abort", () => reject(new DOMException("trace private detail", "AbortError")));
-    })) as unknown as typeof fetch;
+    const fetcher = vi.fn(
+      (_input: RequestInfo | URL, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () =>
+            reject(new DOMException("trace private detail", "AbortError")),
+          );
+        }),
+    ) as unknown as typeof fetch;
     const pending = resolveLocation(fetcher);
 
     await vi.advanceTimersByTimeAsync(1_500);
@@ -252,24 +278,45 @@ describe("resolveLocation", () => {
 describe("probe batches", () => {
   it("settles a success, timeout, and unexpected fetch rejection into results", async () => {
     const successFetch = vi.fn(async () => response(200)) as unknown as typeof fetch;
-    const timeoutFetch = vi.fn((_input: RequestInfo | URL, init?: RequestInit) => new Promise<Response>((_resolve, reject) => {
-      init?.signal?.addEventListener("abort", () => reject(new DOMException("private timeout", "AbortError")));
-    })) as unknown as typeof fetch;
-    const unexpectedFetch = vi.fn(async () => Promise.reject(new Error("private batch failure"))) as unknown as typeof fetch;
+    const timeoutFetch = vi.fn(
+      (_input: RequestInfo | URL, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () =>
+            reject(new DOMException("private timeout", "AbortError")),
+          );
+        }),
+    ) as unknown as typeof fetch;
+    const unexpectedFetch = vi.fn(async () =>
+      Promise.reject(new Error("private batch failure")),
+    ) as unknown as typeof fetch;
     const timeoutTimer = timerDependencies(timeoutFetch, [0]);
 
     const settled = Promise.allSettled([
-      probeMonitor(monitor({ id: "success" }), CHECKED_AT, "SJC", timerDependencies(successFetch, [0, 1]).dependencies),
+      probeMonitor(
+        monitor({ id: "success" }),
+        CHECKED_AT,
+        "SJC",
+        timerDependencies(successFetch, [0, 1]).dependencies,
+      ),
       probeMonitor(monitor({ id: "timeout" }), CHECKED_AT, "SJC", timeoutTimer.dependencies),
-      probeMonitor(monitor({ id: "unexpected" }), CHECKED_AT, "SJC", timerDependencies(unexpectedFetch, [0]).dependencies),
+      probeMonitor(
+        monitor({ id: "unexpected" }),
+        CHECKED_AT,
+        "SJC",
+        timerDependencies(unexpectedFetch, [0]).dependencies,
+      ),
     ]);
     timeoutTimer.fireNextTimer();
 
     const results = await settled;
     expect(results).toHaveLength(3);
     expect(results.every((settlement) => settlement.status === "fulfilled")).toBe(true);
-    const checkResults = results.map((settlement) => (settlement as PromiseFulfilledResult<CheckResult>).value);
-    expect(checkResults.map((result) => [result.monitorId, result.success, result.errorCode])).toEqual([
+    const checkResults = results.map(
+      (settlement) => (settlement as PromiseFulfilledResult<CheckResult>).value,
+    );
+    expect(
+      checkResults.map((result) => [result.monitorId, result.success, result.errorCode]),
+    ).toEqual([
       ["success", true, null],
       ["timeout", false, "timeout"],
       ["unexpected", false, "unexpected"],

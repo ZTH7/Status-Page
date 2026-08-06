@@ -19,7 +19,9 @@
     "pretest:worker": "npm run prepare:generated",
     "test:worker": "vitest run --config vitest.worker.config.ts",
     "test": "npm run test:unit && npm run test:app && npm run test:worker",
-    "check": "npm run typecheck && npm test && npm run build",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "npm run format:check && npm run typecheck && npm test && npm run build",
     "db:migrate:local": "wrangler d1 migrations apply DB --local",
     "migrate:legacy": "tsx scripts/migrate-legacy-kv.ts",
     "deploy": "npm run build && wrangler deploy"
@@ -30,7 +32,6 @@
   "dependencies": {
     "@fontsource-variable/geist": "^5.3.0",
     "@fontsource-variable/pixelify-sans": "^5.3.0",
-    "motion": "^13.0.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "yaml": "^2.9.0",

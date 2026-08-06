@@ -1,15 +1,16 @@
 import { parse as parseYaml } from "yaml";
 import { z } from "zod";
 
-import type {
-  AppConfig,
-  ConfigSources,
-  HttpMethod,
-  MonitorConfig,
-  PublicLabels,
-  SiteConfig,
-  Thresholds,
-  ThemeId,
+import {
+  THEME_IDS,
+  type AppConfig,
+  type ConfigSources,
+  type HttpMethod,
+  type MonitorConfig,
+  type PublicLabels,
+  type SiteConfig,
+  type Thresholds,
+  type ThemeId,
 } from "./types";
 
 export const DEFAULT_THRESHOLDS: Thresholds = {
@@ -20,13 +21,17 @@ export const DEFAULT_THRESHOLDS: Thresholds = {
 
 export const DEFAULTS = {
   historyDays: 90,
-  rawRetentionDays: 90,
   requestTimeoutSeconds: 10,
+  userAgent: "StatusPage/2",
   colorMode: "system" as const,
 };
 
 const monitorCrons = ["* * * * *", "*/5 * * * *", "*/10 * * * *"] as const;
-const retentionCron = "17 3 * * *";
+const monitorCronSeconds: Record<(typeof monitorCrons)[number], number> = {
+  "* * * * *": 60,
+  "*/5 * * * *": 300,
+  "*/10 * * * *": 600,
+};
 const idPattern = /^[a-z0-9][a-z0-9-]{0,63}$/;
 
 const positiveInteger = z.number().int().positive();
@@ -38,48 +43,53 @@ const thresholdsSchema = z.object({
 });
 
 const labelsSchema = z.object({
-  allOperational: z.string(),
-  someDegraded: z.string(),
-  someOutage: z.string(),
-  statusUnknown: z.string(),
-  operational: z.string(),
-  degraded: z.string(),
-  outage: z.string(),
-  noData: z.string(),
-  searchPlaceholder: z.string(),
-  noServices: z.string(),
-  noMatches: z.string(),
-  recentIncidents: z.string(),
-  noIncidents: z.string(),
-  lastChecked: z.string(),
-  responseTime: z.string(),
-  location: z.string(),
-  historyStart: z.string(),
-  today: z.string(),
-  startedAt: z.string(),
-  escalatedAt: z.string(),
-  recoveredAt: z.string(),
-  ongoing: z.string(),
+  allOperational: z.string().max(128),
+  someDegraded: z.string().max(128),
+  someOutage: z.string().max(128),
+  statusUnknown: z.string().max(128),
+  operational: z.string().max(128),
+  degraded: z.string().max(128),
+  outage: z.string().max(128),
+  noData: z.string().max(128),
+  searchPlaceholder: z.string().max(128),
+  noServices: z.string().max(128),
+  noMatches: z.string().max(128),
+  recentIncidents: z.string().max(128),
+  noIncidents: z.string().max(128),
+  lastChecked: z.string().max(128),
+  responseTime: z.string().max(128),
+  location: z.string().max(128),
+  historyStart: z.string().max(128),
+  today: z.string().max(128),
+  startedAt: z.string().max(128),
+  escalatedAt: z.string().max(128),
+  recoveredAt: z.string().max(128),
+  ongoing: z.string().max(128),
 });
 
 const siteSchema = z.object({
-  title: z.string().min(1),
-  url: z.string().min(1),
+  title: z.string().min(1).max(128),
+  url: z.string().min(1).max(1_000),
   logo: z.string().min(1),
-  theme: z.enum(["default", "stardew-inspired"]),
+  theme: z.enum(THEME_IDS),
   colorMode: z.enum(["system", "light", "dark"]).default(DEFAULTS.colorMode),
   historyDays: z.number().int().min(1).max(365).default(DEFAULTS.historyDays),
-  rawRetentionDays: z.number().int().min(1).max(365).default(DEFAULTS.rawRetentionDays),
   requestTimeoutSeconds: z.number().int().min(1).max(60).default(DEFAULTS.requestTimeoutSeconds),
+  userAgent: z
+    .string()
+    .min(1)
+    .max(256)
+    .refine((value) => !/[\r\n]/.test(value), "userAgent cannot contain line breaks")
+    .default(DEFAULTS.userAgent),
   thresholds: thresholdsSchema.partial().default({}),
   labels: labelsSchema,
 });
 
 const monitorSchema = z.object({
   id: z.string().regex(idPattern),
-  name: z.string().min(1),
-  description: z.string().optional(),
-  url: z.string().min(1),
+  name: z.string().min(1).max(128),
+  description: z.string().max(500).optional(),
+  url: z.string().min(1).max(1_000),
   linkable: z.boolean(),
   method: z.enum(["GET", "HEAD"]),
   expectStatus: z.number().int().min(100).max(599),
@@ -137,17 +147,15 @@ function validateLabelTokens(labels: PublicLabels): void {
   }
 }
 
-function validateCrons(wranglerConfig: unknown): void {
+function monitorIntervalSeconds(wranglerConfig: unknown): number {
   const { triggers } = wranglerSchema.parse(wranglerConfig);
   const { crons } = triggers;
 
-  if (crons.length !== 2 || !monitorCrons.includes(crons[0] as (typeof monitorCrons)[number])) {
-    throw new Error("Wrangler must configure one supported monitor Cron followed by retention Cron");
+  if (crons.length !== 1 || !monitorCrons.includes(crons[0] as (typeof monitorCrons)[number])) {
+    throw new Error("Wrangler must configure exactly one supported monitor Cron");
   }
 
-  if (crons[1] !== retentionCron) {
-    throw new Error(`Wrangler must configure retention Cron ${retentionCron}`);
-  }
+  return monitorCronSeconds[crons[0] as (typeof monitorCrons)[number]];
 }
 
 function normalizeMonitorThresholds(
@@ -184,13 +192,13 @@ export function parseConfigSources(input: ConfigSources): AppConfig {
     throw new Error(`Site URL must use HTTP(S): ${rawSite.url}`);
   }
 
-  if (rawSite.rawRetentionDays < rawSite.historyDays) {
-    throw new Error("rawRetentionDays must be greater than or equal to historyDays");
-  }
-
   validateAsset(rawSite.logo, input.assetExists);
   validateLabelTokens(rawSite.labels as PublicLabels);
-  validateCrons(input.wranglerConfig);
+  const intervalSeconds = monitorIntervalSeconds(input.wranglerConfig);
+
+  if (rawSite.requestTimeoutSeconds >= intervalSeconds) {
+    throw new Error("requestTimeoutSeconds must be shorter than the monitor Cron interval");
+  }
 
   const ids = new Set<string>();
   for (const monitor of rawMonitors) {
@@ -204,6 +212,9 @@ export function parseConfigSources(input: ConfigSources): AppConfig {
     if (monitor.presentationLogo) {
       validateAsset(monitor.presentationLogo, input.assetExists);
     }
+    if ((monitor.timeoutSeconds ?? rawSite.requestTimeoutSeconds) >= intervalSeconds) {
+      throw new Error(`Monitor timeout must be shorter than the Cron interval: ${monitor.id}`);
+    }
   }
 
   const site: SiteConfig = {
@@ -212,7 +223,8 @@ export function parseConfigSources(input: ConfigSources): AppConfig {
     thresholds: {
       degradedAfterFailures:
         rawSite.thresholds.degradedAfterFailures ?? DEFAULT_THRESHOLDS.degradedAfterFailures,
-      outageAfterMinutes: rawSite.thresholds.outageAfterMinutes ?? DEFAULT_THRESHOLDS.outageAfterMinutes,
+      outageAfterMinutes:
+        rawSite.thresholds.outageAfterMinutes ?? DEFAULT_THRESHOLDS.outageAfterMinutes,
       recoverAfterSuccesses:
         rawSite.thresholds.recoverAfterSuccesses ?? DEFAULT_THRESHOLDS.recoverAfterSuccesses,
     },
@@ -229,7 +241,9 @@ export function parseConfigSources(input: ConfigSources): AppConfig {
       expectStatus: monitor.expectStatus,
       followRedirect: monitor.followRedirect,
       ...(monitor.description === undefined ? {} : { description: monitor.description }),
-      ...(monitor.presentationLogo === undefined ? {} : { presentationLogo: monitor.presentationLogo }),
+      ...(monitor.presentationLogo === undefined
+        ? {}
+        : { presentationLogo: monitor.presentationLogo }),
       ...(monitor.timeoutSeconds === undefined ? {} : { timeoutSeconds: monitor.timeoutSeconds }),
       ...(thresholds === undefined ? {} : { thresholds }),
     };

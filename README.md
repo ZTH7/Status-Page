@@ -139,8 +139,8 @@ logo: /logo.svg
 theme: default
 colorMode: system
 historyDays: 90
-rawRetentionDays: 90
 requestTimeoutSeconds: 10
+userAgent: StatusPage/2
 thresholds:
   degradedAfterFailures: 2
   outageAfterMinutes: 60
@@ -162,7 +162,7 @@ labels:
   lastChecked: 最后检查
   responseTime: 响应时间
   location: 检查位置
-  historyStart: '{days} 天前'
+  historyStart: "{days} 天前"
   today: 今天
   startedAt: 首次失败
   escalatedAt: 中断开始
@@ -172,22 +172,22 @@ labels:
 
 常用配置说明：
 
-| 配置项                  | 说明                                           |
-| ----------------------- | ---------------------------------------------- |
-| `title`                 | 网站标题                                       |
-| `url`                   | 最终访问地址，首次部署时可先填写计划使用的域名 |
-| `logo`                  | `public/` 目录中的 Logo 路径                   |
-| `theme`                 | `default` 或 `stardew-inspired`                |
-| `colorMode`             | `system`、`light` 或 `dark`                    |
-| `historyDays`           | 前端展示的历史天数，范围为 1–365               |
-| `rawRetentionDays`      | 原始记录保留天数，范围为 1–365，且不能更短     |
-| `requestTimeoutSeconds` | 默认请求超时秒数，范围为 1–60                  |
-| `degradedAfterFailures` | 连续失败多少次后变黄                           |
-| `outageAfterMinutes`    | 从首个失败开始多少分钟后变红                   |
-| `recoverAfterSuccesses` | 连续成功多少次后恢复绿色                       |
-| `labels`                | 页面上使用的文字，所有字段都需要保留           |
+| 配置项                  | 说明                                                        |
+| ----------------------- | ----------------------------------------------------------- |
+| `title`                 | 网站标题                                                    |
+| `url`                   | 最终访问地址，首次部署时可先填写计划使用的域名              |
+| `logo`                  | `public/` 目录中的 Logo 路径                                |
+| `theme`                 | `default` 或 `stardew-inspired`                             |
+| `colorMode`             | `system`、`light` 或 `dark`                                 |
+| `historyDays`           | 前端展示的历史天数，范围为 1–365                            |
+| `requestTimeoutSeconds` | 默认请求超时秒数，必须短于选定的 Cron 间隔                  |
+| `userAgent`             | 检查目标服务时发送的自定义 HTTP `User-Agent`，最长 256 字符 |
+| `degradedAfterFailures` | 连续失败多少次后变黄                                        |
+| `outageAfterMinutes`    | 从首个失败开始多少分钟后变红                                |
+| `recoverAfterSuccesses` | 连续成功多少次后恢复绿色                                    |
+| `labels`                | 页面上使用的文字，所有字段都需要保留                        |
 
-`labels.historyStart` 中的 `{days}` 会被替换为历史天数，翻译时应保留这个占位符。其他标签不支持自定义占位符。
+`labels.historyStart` 中的 `{days}` 会被替换为历史天数，翻译时应保留这个占位符。其他标签不支持自定义占位符。`userAgent` 可以改成自己的项目名，例如 `MyStatusPage/1.0`；不能包含换行，也不要在其中放 Token 或其他秘密。
 
 ### 更换网站 Logo
 
@@ -286,7 +286,7 @@ npm run check
 
 ## 第六步：选择检查频率
 
-打开 `wrangler.jsonc`，修改 `triggers.crons` 中的第一个表达式：
+打开 `wrangler.jsonc`，修改 `triggers.crons` 中唯一的表达式：
 
 | 检查频率   | Cron 表达式    |
 | ---------- | -------------- |
@@ -298,13 +298,15 @@ npm run check
 
 ```json
 "triggers": {
-  "crons": ["* * * * *", "17 3 * * *"]
+  "crons": ["* * * * *"]
 }
 ```
 
-第二个 `17 3 * * *` 是每日清理过期原始记录的任务，请不要删除。
-
 红色状态使用经过分钟数计算，所以切换 1、5 或 10 分钟检查频率不会改变 `outageAfterMinutes` 的含义。
+
+项目只配置一个 Cron。请求超时必须短于所选间隔，避免前一次检查尚未结束时下一次检查已经开始。
+
+每次检查不会新增一条原始记录。D1 只覆盖每个服务的当前状态、累加每天的汇总数据，并在发生故障时记录开始、升级和恢复时间。因此一分钟频率也不会持续增长逐分钟明细表。
 
 ## 第七步：本地检查
 
@@ -340,7 +342,7 @@ themes/
 
 不要上传 `.dev.vars`、`.wrangler/`、`dist/`、`node_modules/` 或任何 API Token、Webhook 和机器人凭据。这些本地目录已写入 `.gitignore`。
 
-如果把本项目保留在更大的仓库中，Cloudflare 的 Root directory 需要填写 `CFStatusPage`。但更推荐将本目录单独作为仓库根目录，这样仓库中的 GitHub Actions 工作流也能正常识别。
+本项目已经按独立仓库组织；Cloudflare 的 Root directory 保持为空即可。
 
 ## 第九步：连接 Cloudflare Workers Builds
 
@@ -377,7 +379,7 @@ Cloudflare 连接 GitHub 时会为 Workers Builds 配置部署授权，不需要
 
 内部 Worker 名称必须与 `wrangler.jsonc` 中的 `name: "cfstatuspage"` 一致。它不会显示在网站标题中，网站仍显示 `Status Page`。
 
-确认后选择 **Save and Deploy**。构建过程会安装依赖、执行完整检查、生成并部署前端与 Worker、绑定 D1，并应用两个 Cron Trigger 配置。
+确认后选择 **Save and Deploy**。构建过程会安装依赖、执行完整检查、生成并部署前端与 Worker、绑定 D1，并应用一个 Cron Trigger 配置。
 
 ## 第十步：配置 Telegram Bot 提醒（可选）
 
@@ -469,7 +471,7 @@ npx wrangler secret put SECRET_DISCORD_WEBHOOK_URL
 
 ```bash
 npx wrangler d1 execute DB --remote --command "SELECT COUNT(*) AS states FROM monitor_state;"
-npx wrangler d1 execute DB --remote --command "SELECT COUNT(*) AS checks FROM check_results;"
+npx wrangler d1 execute DB --remote --command "SELECT COUNT(*) AS days FROM daily_summaries;"
 ```
 
 如果 `monitor_state` 仍为空，依次检查 Cron Triggers、名为 `DB` 的 D1 binding、`database_id` 所属账户以及 Worker 日志。

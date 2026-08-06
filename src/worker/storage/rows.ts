@@ -1,16 +1,5 @@
 import type { CheckResult, MonitorState, StatusLevel } from "../../domain/types";
 
-export interface CheckResultRow {
-  monitor_id: string;
-  checked_at: number;
-  success: number;
-  http_status: number | null;
-  status_text: string | null;
-  response_ms: number | null;
-  location: string | null;
-  error_code: string | null;
-}
-
 export interface MonitorStateRow {
   monitor_id: string;
   level: string;
@@ -99,19 +88,6 @@ function errorCode(value: string | null, column: string): CheckResult["errorCode
     return value as NonNullable<CheckResult["errorCode"]>;
   }
   throw new TypeError(`Invalid ${column}: ${value}.`);
-}
-
-export function checkResultFromRow(row: CheckResultRow): CheckResult {
-  return {
-    monitorId: row.monitor_id,
-    checkedAt: row.checked_at,
-    success: booleanFromInteger(row.success, "success"),
-    httpStatus: row.http_status,
-    statusText: row.status_text,
-    responseMs: row.response_ms,
-    location: row.location ?? "",
-    errorCode: errorCode(row.error_code, "error_code"),
-  };
 }
 
 export function monitorStateFromRow(row: MonitorStateRow): MonitorState {

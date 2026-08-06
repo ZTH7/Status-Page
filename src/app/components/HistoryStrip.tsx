@@ -1,109 +1,100 @@
-import { useId, useState } from 'react'
+import { useId, useState } from "react";
 
-import type { PublicLabels } from '../../config/types'
-import type { PublicDay, PublicLevel } from '../../shared/api-types'
+import type { PublicLabels } from "../../config/types";
+import type { PublicDay, PublicLevel } from "../../shared/api-types";
 
 interface HistoryStripProps {
-  days: PublicDay[]
-  labels: PublicLabels
+  days: PublicDay[];
+  labels: PublicLabels;
 }
 
-type SelectionSource = 'focus' | 'hover' | 'activate'
+type SelectionSource = "focus" | "hover" | "activate";
 
 function historyLevelText(level: PublicLevel, labels: PublicLabels): string {
   switch (level) {
-    case 'operational':
-      return labels.operational
-    case 'degraded':
-      return labels.degraded
-    case 'outage':
-      return labels.outage
-    case 'unknown':
-      return labels.noData
+    case "operational":
+      return labels.operational;
+    case "degraded":
+      return labels.degraded;
+    case "outage":
+      return labels.outage;
+    case "unknown":
+      return labels.noData;
   }
 }
 
 function quantity(value: number, singular: string, plural: string): string {
-  return `${value} ${value === 1 ? singular : plural}`
+  return `${value} ${value === 1 ? singular : plural}`;
 }
 
 function locationText(day: PublicDay, labels: PublicLabels): string[] {
   return day.locations.map((location) => {
-    const average =
-      location.averageMs === null ? labels.noData : `${location.averageMs} ms`
-    return `${location.code} average ${average} from ${quantity(location.checks, 'check', 'checks')}`
-  })
+    const average = location.averageMs === null ? labels.noData : `${location.averageMs} ms`;
+    return `${location.code} average ${average} from ${quantity(location.checks, "check", "checks")}`;
+  });
 }
 
 function accessibleDayLabel(day: PublicDay, labels: PublicLabels): string {
   return [
     day.day,
     historyLevelText(day.level, labels),
-    quantity(day.checks, 'check', 'checks'),
-    quantity(day.failures, 'failure', 'failures'),
+    quantity(day.checks, "check", "checks"),
+    quantity(day.failures, "failure", "failures"),
     ...locationText(day, labels),
-  ].join(', ')
+  ].join(", ");
 }
 
 function formatDay(day: string): string {
   return new Intl.DateTimeFormat(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    timeZone: 'UTC',
-  }).format(new Date(`${day}T00:00:00Z`))
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${day}T00:00:00Z`));
 }
 
 export function HistoryStrip({ days, labels }: HistoryStripProps) {
-  const [focusedIndex, setFocusedIndex] = useState<number | null>(null)
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
-  const [activatedIndex, setActivatedIndex] = useState<number | null>(null)
-  const [selectionSource, setSelectionSource] =
-    useState<SelectionSource | null>(null)
-  const detailId = `history-detail-${useId().replaceAll(':', '')}`
+  const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [activatedIndex, setActivatedIndex] = useState<number | null>(null);
+  const [selectionSource, setSelectionSource] = useState<SelectionSource | null>(null);
+  const detailId = `history-detail-${useId().replaceAll(":", "")}`;
   const selectedIndex =
-    selectionSource === 'hover'
+    selectionSource === "hover"
       ? (hoveredIndex ?? focusedIndex ?? activatedIndex)
-      : selectionSource === 'focus'
+      : selectionSource === "focus"
         ? (focusedIndex ?? hoveredIndex ?? activatedIndex)
-        : (activatedIndex ?? focusedIndex ?? hoveredIndex)
-  const selectedDay =
-    selectedIndex === null ? null : (days[selectedIndex] ?? null)
+        : (activatedIndex ?? focusedIndex ?? hoveredIndex);
+  const selectedDay = selectedIndex === null ? null : (days[selectedIndex] ?? null);
 
   const clearSelection = () => {
-    setFocusedIndex(null)
-    setHoveredIndex(null)
-    setActivatedIndex(null)
-    setSelectionSource(null)
-  }
+    setFocusedIndex(null);
+    setHoveredIndex(null);
+    setActivatedIndex(null);
+    setSelectionSource(null);
+  };
 
   return (
     <div
       className="history-strip"
       onBlur={(event) => {
-        const nextTarget = event.relatedTarget
-        if (
-          !(nextTarget instanceof Node) ||
-          !event.currentTarget.contains(nextTarget)
-        ) {
-          clearSelection()
+        const nextTarget = event.relatedTarget;
+        if (!(nextTarget instanceof Node) || !event.currentTarget.contains(nextTarget)) {
+          clearSelection();
         }
       }}
       onKeyDown={(event) => {
-        if (event.key === 'Escape') {
-          event.preventDefault()
-          clearSelection()
+        if (event.key === "Escape") {
+          event.preventDefault();
+          clearSelection();
         }
       }}
     >
       <div className="history-strip__scroller">
         <div className="history-strip__track">
-          <ol
-            className="history-strip__days"
-            aria-label={`${days.length}-day history`}
-          >
+          <ol className="history-strip__days" aria-label={`${days.length}-day history`}>
             {days.map((day, index) => {
-              const selected = selectedIndex === index
+              const selected = selectedIndex === index;
               return (
                 <li key={`${day.day}-${index}`}>
                   <button
@@ -114,40 +105,38 @@ export function HistoryStrip({ days, labels }: HistoryStripProps) {
                     aria-expanded={selected}
                     aria-describedby={selected ? detailId : undefined}
                     onMouseEnter={() => {
-                      setHoveredIndex(index)
-                      setSelectionSource('hover')
+                      setHoveredIndex(index);
+                      setSelectionSource("hover");
                     }}
                     onMouseLeave={() => {
-                      setHoveredIndex(null)
+                      setHoveredIndex(null);
                       setSelectionSource(
                         focusedIndex !== null
-                          ? 'focus'
+                          ? "focus"
                           : activatedIndex !== null
-                            ? 'activate'
+                            ? "activate"
                             : null,
-                      )
+                      );
                     }}
                     onFocus={() => {
-                      setFocusedIndex(index)
-                      setSelectionSource('focus')
+                      setFocusedIndex(index);
+                      setSelectionSource("focus");
                     }}
                     onClick={() => {
-                      setActivatedIndex(index)
-                      setSelectionSource('activate')
+                      setActivatedIndex(index);
+                      setSelectionSource("activate");
                     }}
                   >
                     <span aria-hidden="true" />
                   </button>
                 </li>
-              )
+              );
             })}
           </ol>
         </div>
       </div>
       <div className="history-strip__range" aria-hidden="true">
-        <span>
-          {labels.historyStart.replace('{days}', String(days.length))}
-        </span>
+        <span>{labels.historyStart.replace("{days}", String(days.length))}</span>
         <span>{labels.today}</span>
       </div>
       {selectedDay ? (
@@ -160,8 +149,8 @@ export function HistoryStrip({ days, labels }: HistoryStripProps) {
           <div className="history-detail__summary">
             <time dateTime={selectedDay.day}>{formatDay(selectedDay.day)}</time>
             <strong>{historyLevelText(selectedDay.level, labels)}</strong>
-            <span>{quantity(selectedDay.checks, 'check', 'checks')}</span>
-            <span>{quantity(selectedDay.failures, 'failure', 'failures')}</span>
+            <span>{quantity(selectedDay.checks, "check", "checks")}</span>
+            <span>{quantity(selectedDay.failures, "failure", "failures")}</span>
           </div>
           {selectedDay.locations.length > 0 ? (
             <ul className="history-detail__locations">
@@ -175,5 +164,5 @@ export function HistoryStrip({ days, labels }: HistoryStripProps) {
         </div>
       ) : null}
     </div>
-  )
+  );
 }
