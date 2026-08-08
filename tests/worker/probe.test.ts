@@ -91,6 +91,39 @@ describe("probeMonitor", () => {
     expect(timer.cleared).toEqual([1]);
   });
 
+  it("calls receiver-sensitive runtime functions without binding the dependency object as this", async () => {
+    const calls: string[] = [];
+    const fetcher = function (this: unknown) {
+      if (this !== undefined) throw new TypeError("Illegal invocation");
+      calls.push("fetch");
+      return Promise.resolve(response(200));
+    } as typeof fetch;
+    const now = function (this: unknown) {
+      if (this !== undefined) throw new TypeError("Illegal invocation");
+      calls.push("now");
+      return calls.filter((call) => call === "now").length;
+    };
+    const setTimer = function (this: unknown) {
+      if (this !== undefined) throw new TypeError("Illegal invocation");
+      calls.push("setTimer");
+      return 1;
+    } as unknown as typeof setTimeout;
+    const clearTimer = function (this: unknown) {
+      if (this !== undefined) throw new TypeError("Illegal invocation");
+      calls.push("clearTimer");
+    } as unknown as typeof clearTimeout;
+
+    await expect(
+      probeMonitor(monitor(), CHECKED_AT, "SJC", {
+        fetch: fetcher,
+        now,
+        setTimer,
+        clearTimer,
+      }),
+    ).resolves.toMatchObject({ success: true, httpStatus: 200 });
+    expect(calls).toEqual(["setTimer", "now", "fetch", "now", "clearTimer"]);
+  });
+
   it("keeps a received mismatched status as a normal failed result", async () => {
     const fetcher = vi.fn(async () => response(503, "Unavailable")) as unknown as typeof fetch;
     const timer = timerDependencies(fetcher, [5, 8]);

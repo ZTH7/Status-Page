@@ -55,23 +55,30 @@ export async function probeMonitor(
   location: string,
   dependencies: ProbeDependencies,
 ): Promise<CheckResult> {
+  const {
+    fetch: fetcher,
+    now,
+    setTimer,
+    clearTimer,
+    userAgent = appConfig.site.userAgent,
+  } = dependencies;
   const controller = new AbortController();
   let timedOut = false;
   const timeoutMs = (monitor.timeoutSeconds ?? appConfig.site.requestTimeoutSeconds) * 1_000;
-  const timer = dependencies.setTimer(() => {
+  const timer = setTimer(() => {
     timedOut = true;
     controller.abort();
   }, timeoutMs);
 
   try {
-    const startedAt = dependencies.now();
-    const response = await dependencies.fetch(monitor.url, {
+    const startedAt = now();
+    const response = await fetcher(monitor.url, {
       method: monitor.method,
       redirect: monitor.followRedirect ? "follow" : "manual",
-      headers: { "User-Agent": dependencies.userAgent ?? appConfig.site.userAgent },
+      headers: { "User-Agent": userAgent },
       signal: controller.signal,
     });
-    const responseMs = Math.max(0, dependencies.now() - startedAt);
+    const responseMs = Math.max(0, now() - startedAt);
 
     return {
       monitorId: monitor.id,
@@ -97,6 +104,6 @@ export async function probeMonitor(
       ...(diagnostic === undefined ? {} : { diagnostic }),
     };
   } finally {
-    dependencies.clearTimer(timer);
+    clearTimer(timer);
   }
 }
