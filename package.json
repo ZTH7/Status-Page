@@ -8,6 +8,7 @@
     "build": "vite build",
     "cf-types": "wrangler types src/worker-configuration.d.ts",
     "config:generate": "tsx scripts/generate-config.ts",
+    "config:require": "tsx scripts/generate-config.ts --require-private",
     "prepare:generated": "npm run config:generate && npm run cf-types",
     "predev": "npm run prepare:generated",
     "prebuild": "npm run prepare:generated",
@@ -23,10 +24,30 @@
     "format:check": "prettier --check .",
     "check": "npm run format:check && npm run typecheck && npm test && npm run build",
     "db:init:local": "wrangler d1 execute DB --local --file database/schema.sql",
-    "deploy": "npm run build && wrangler deploy"
+    "db:setup": "wrangler d1 execute DB --remote --file database/schema.sql --yes",
+    "deploy": "npm run config:require && vite build && wrangler deploy && npm run db:setup"
   },
   "engines": {
     "node": ">=22"
+  },
+  "cloudflare": {
+    "bindings": {
+      "DB": {
+        "description": "Stores current service status, compact daily history, and incidents."
+      },
+      "SECRET_SLACK_WEBHOOK_URL": {
+        "description": "Optional Slack incoming webhook URL. Leave empty when Slack alerts are not used."
+      },
+      "SECRET_TELEGRAM_API_TOKEN": {
+        "description": "Optional Telegram Bot API token. Leave empty when Telegram alerts are not used."
+      },
+      "SECRET_TELEGRAM_CHAT_ID": {
+        "description": "Optional Telegram chat, group, or channel ID."
+      },
+      "SECRET_DISCORD_WEBHOOK_URL": {
+        "description": "Optional Discord webhook URL. Leave empty when Discord alerts are not used."
+      }
+    }
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.3.0",

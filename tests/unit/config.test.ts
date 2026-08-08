@@ -118,7 +118,7 @@ describe("public branding and deployment entrypoint", () => {
     }
   });
 
-  it("builds before a direct Wrangler deployment", () => {
+  it("builds, deploys, and initializes an automatically provisioned D1 database", () => {
     const packageJson = JSON.parse(readFileSync("package.json", "utf8")) as {
       name: string;
       scripts: Record<string, string>;
@@ -127,12 +127,19 @@ describe("public branding and deployment entrypoint", () => {
     const deployWorkflow = readFileSync(".github/workflows/deploy.yml", "utf8");
 
     expect(packageJson.name).toBe("status-page");
-    expect(packageJson.scripts.deploy).toBe("npm run build && wrangler deploy");
+    expect(packageJson.scripts.deploy).toBe(
+      "npm run config:require && vite build && wrangler deploy && npm run db:setup",
+    );
+    expect(packageJson.scripts["db:setup"]).toContain(
+      "d1 execute DB --remote --file database/schema.sql --yes",
+    );
     expect(wranglerConfig).toContain('"name": "status-page"');
     expect(wranglerConfig).toContain('"database_name": "status-page"');
+    expect(wranglerConfig).not.toContain('"database_id"');
     expect(deployWorkflow).toContain("STATUS_SITE_CONFIG_YAML");
     expect(deployWorkflow).toContain("STATUS_MONITORS_CONFIG_YAML");
     expect(deployWorkflow).toContain("npm run build");
+    expect(deployWorkflow).toContain("d1 execute DB --remote --file database/schema.sql --yes");
     expect(`${wranglerConfig}${deployWorkflow}`).not.toMatch(/cfstatuspage/i);
   });
 });

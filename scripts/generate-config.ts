@@ -22,6 +22,7 @@ const publicDirectory = resolve(rootDirectory, "public");
 const realPublicDirectory = realpathSync(publicDirectory);
 const siteConfigVariable = "STATUS_SITE_CONFIG_YAML";
 const monitorsConfigVariable = "STATUS_MONITORS_CONFIG_YAML";
+const requirePrivateConfig = process.argv.includes("--require-private");
 
 function readProjectFile(relativePath: string): string {
   return readFileSync(resolve(rootDirectory, relativePath), "utf8");
@@ -56,6 +57,12 @@ function configSources(): { siteSource: string; monitorsSource: string } {
       siteSource: readProjectFile(localSitePath),
       monitorsSource: readProjectFile(localMonitorsPath),
     };
+  }
+
+  if (requirePrivateConfig) {
+    throw new Error(
+      `Deployment requires ${siteConfigVariable} and ${monitorsConfigVariable} build secrets.`,
+    );
   }
 
   return {

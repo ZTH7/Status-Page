@@ -62,4 +62,6 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy
+          command: |
+            deploy
+            d1 execute DB --remote --file database/schema.sql --yes
