@@ -22,7 +22,7 @@ const useColorModePath = "../../src/app/hooks/useColorMode";
 const useMonitorSearchPath = "../../src/app/hooks/useMonitorSearch";
 
 function generateArtifacts(): void {
-  execFileSync(process.execPath, ["--import", "tsx", "scripts/generate-config.ts"], {
+  execFileSync(process.execPath, ["--import", "tsx", "scripts/generate-config.ts", "--example"], {
     cwd: process.cwd(),
     stdio: "pipe",
   });

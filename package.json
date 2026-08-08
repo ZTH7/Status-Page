@@ -15,7 +15,7 @@
     "pretypecheck": "npm run prepare:generated",
     "typecheck": "tsc --noEmit",
     "test:unit": "vitest run --config vitest.unit.config.ts",
-    "pretest:app": "npm run config:generate",
+    "pretest:app": "tsx scripts/generate-config.ts --example",
     "test:app": "vitest run --config vitest.app.config.ts",
     "pretest:worker": "npm run prepare:generated",
     "test:worker": "vitest run --config vitest.worker.config.ts",

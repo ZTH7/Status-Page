@@ -23,6 +23,7 @@ const realPublicDirectory = realpathSync(publicDirectory);
 const siteConfigVariable = "STATUS_SITE_CONFIG_YAML";
 const monitorsConfigVariable = "STATUS_MONITORS_CONFIG_YAML";
 const requirePrivateConfig = process.argv.includes("--require-private");
+const useExampleConfig = process.argv.includes("--example");
 
 function readProjectFile(relativePath: string): string {
   return readFileSync(resolve(rootDirectory, relativePath), "utf8");
@@ -34,6 +35,13 @@ function nonEmptyEnvironmentValue(name: string): string | undefined {
 }
 
 function configSources(): { siteSource: string; monitorsSource: string } {
+  if (useExampleConfig) {
+    return {
+      siteSource: readProjectFile("config/site.example.yaml"),
+      monitorsSource: readProjectFile("config/monitors.example.yaml"),
+    };
+  }
+
   const siteFromEnvironment = nonEmptyEnvironmentValue(siteConfigVariable);
   const monitorsFromEnvironment = nonEmptyEnvironmentValue(monitorsConfigVariable);
   if (siteFromEnvironment !== undefined || monitorsFromEnvironment !== undefined) {

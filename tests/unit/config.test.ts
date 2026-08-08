@@ -135,6 +135,7 @@ describe("public branding and deployment entrypoint", () => {
     );
     expect(wranglerConfig).toContain('"name": "status-page"');
     expect(wranglerConfig).toContain('"database_name": "status-page"');
+    expect(wranglerConfig).toContain('"global_fetch_strictly_public"');
     expect(wranglerConfig).not.toContain('"database_id"');
     expect(deployWorkflow).toContain("STATUS_SITE_CONFIG_YAML");
     expect(deployWorkflow).toContain("STATUS_MONITORS_CONFIG_YAML");
@@ -254,6 +255,20 @@ describe("config generator", () => {
     expect(firstRun[1]).not.toContain("https://api.example.test/health");
     expect(firstRun[2]).not.toContain("https://api.example.test/health");
     expect(`${firstRun[1]}${firstRun[2]}`).not.toMatch(/SECRET_|WEBHOOK/i);
+  });
+
+  it("selects the injected Stardew theme in every generated theme artifact", () => {
+    runConfigGenerator(generatorEnvironment({ theme: "stardew-inspired" }));
+
+    expect(readFileSync("src/generated/public-config.ts", "utf8")).toContain(
+      '"theme": "stardew-inspired"',
+    );
+    expect(readFileSync("src/generated/active-theme.ts", "utf8").trim()).toBe(
+      'export { theme as activeTheme } from "../../themes/stardew-inspired/index";',
+    );
+    expect(readFileSync("public/theme-bootstrap.js", "utf8")).toContain(
+      'dataset.theme = "stardew-inspired"',
+    );
   });
 
   it("rejects a partially configured build secret pair", () => {
