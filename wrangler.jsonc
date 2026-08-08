@@ -14,5 +14,5 @@
       "database_name": "status-page"
     }
   ],
-  "triggers": { "crons": ["* * * * *"] }
+  "triggers": { "crons": ["*/5 * * * *"] }
 }

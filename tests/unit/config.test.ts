@@ -136,6 +136,7 @@ describe("public branding and deployment entrypoint", () => {
     expect(wranglerConfig).toContain('"name": "status-page"');
     expect(wranglerConfig).toContain('"database_name": "status-page"');
     expect(wranglerConfig).toContain('"global_fetch_strictly_public"');
+    expect(wranglerConfig).toContain('"*/5 * * * *"');
     expect(wranglerConfig).not.toContain('"database_id"');
     expect(deployWorkflow).toContain("STATUS_SITE_CONFIG_YAML");
     expect(deployWorkflow).toContain("STATUS_MONITORS_CONFIG_YAML");
