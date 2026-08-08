@@ -4,6 +4,5 @@ node_modules/
 src/generated/
 src/worker-configuration.d.ts
 public/theme-bootstrap.js
-docs/superpowers/
-migration-backups/
+.local-tools/
 old_project/

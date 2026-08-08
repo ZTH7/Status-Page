@@ -650,7 +650,7 @@ describe("useColorMode", () => {
     const module = await import(/* @vite-ignore */ useColorModePath).catch(() => null);
     expect(module).not.toBeNull();
     if (!module) return;
-    window.localStorage.setItem("cfstatuspage-color-mode", "dark");
+    window.localStorage.setItem("status-page-color-mode", "dark");
     const media = installMatchMedia(false);
     const { result } = renderHook(() => module.useColorMode());
 
@@ -685,7 +685,7 @@ describe("useColorMode", () => {
       preference: "light",
       colorMode: "light",
     });
-    expect(window.localStorage.getItem("cfstatuspage-color-mode")).toBe("light");
+    expect(window.localStorage.getItem("status-page-color-mode")).toBe("light");
     expect(document.documentElement.dataset.colorMode).toBe("light");
 
     act(() => result.current.toggle());
@@ -693,7 +693,7 @@ describe("useColorMode", () => {
       preference: "dark",
       colorMode: "dark",
     });
-    expect(window.localStorage.getItem("cfstatuspage-color-mode")).toBe("dark");
+    expect(window.localStorage.getItem("status-page-color-mode")).toBe("dark");
   });
 
   it("responds to media changes only while preference is system", async () => {

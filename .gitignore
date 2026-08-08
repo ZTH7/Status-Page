@@ -2,9 +2,14 @@ node_modules/
 dist/
 .wrangler/
 .dev.vars
+.env
+.env.*
+config/site.yaml
+config/monitors.yaml
 .superpowers/
 .impeccable/questions/
-migration-backups/
+.local-tools/
+old_project/
 src/generated/
 public/theme-bootstrap.js
 

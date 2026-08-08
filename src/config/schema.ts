@@ -189,7 +189,7 @@ export function parseConfigSources(input: ConfigSources): AppConfig {
   const rawMonitors = monitorsSourceSchema.parse(parseYaml(input.monitorsSource)).monitors;
 
   if (!isHttpUrl(rawSite.url)) {
-    throw new Error(`Site URL must use HTTP(S): ${rawSite.url}`);
+    throw new Error("Site URL must use HTTP(S)");
   }
 
   validateAsset(rawSite.logo, input.assetExists);
@@ -203,7 +203,7 @@ export function parseConfigSources(input: ConfigSources): AppConfig {
   const ids = new Set<string>();
   for (const monitor of rawMonitors) {
     if (!isHttpUrl(monitor.url)) {
-      throw new Error(`Monitor URL must use HTTP(S): ${monitor.url}`);
+      throw new Error(`Monitor URL must use HTTP(S): ${monitor.id}`);
     }
     if (ids.has(monitor.id)) {
       throw new Error(`Duplicate monitor ID: ${monitor.id}`);

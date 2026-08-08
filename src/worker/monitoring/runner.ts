@@ -2,7 +2,12 @@ import type { AppConfig, MonitorConfig } from "../../config/types";
 import { transitionMonitor } from "../../domain/status-machine";
 import { resolveThresholds } from "../../domain/thresholds";
 import type { CheckResult, ErrorCode, MonitorState, NotificationAction } from "../../domain/types";
-import type { PersistCheckBatchResult, PersistedCheck } from "../storage/repository";
+import { listUtcDays } from "../../shared/dates";
+import type {
+  HistoryRetentionCutoff,
+  PersistCheckBatchResult,
+  PersistedCheck,
+} from "../storage/repository";
 
 interface SafeResultRecord {
   monitorId: string;
@@ -49,6 +54,7 @@ export interface RunChecksDependencies {
   persistCheckBatch(
     db: D1Database,
     checks: readonly PersistedCheck[],
+    retentionCutoff?: HistoryRetentionCutoff,
   ): Promise<PersistCheckBatchResult>;
   log(record: SafeStructuredRecord): void;
 }
@@ -100,7 +106,11 @@ export async function runChecks(input: RunChecksInput): Promise<RunSummary> {
 
   let persisted: PersistCheckBatchResult;
   try {
-    persisted = await dependencies.persistCheckBatch(db, checks);
+    persisted = await dependencies.persistCheckBatch(
+      db,
+      checks,
+      retentionCutoffAtUtcMidnight(scheduledAt, config.site.historyDays),
+    );
   } catch (error) {
     const failedSummary = makeSummary(scheduledAt, location, counts, [], false);
     dependencies.log(runRecord("monitoring-storage-failed", failedSummary, safeResults));
@@ -117,6 +127,20 @@ export async function runChecks(input: RunChecksInput): Promise<RunSummary> {
   const summary = makeSummary(scheduledAt, location, counts, notifications, duplicate);
   dependencies.log(runRecord("monitoring-run", summary, safeResults));
   return summary;
+}
+
+function retentionCutoffAtUtcMidnight(
+  scheduledAt: number,
+  historyDays: number,
+): HistoryRetentionCutoff | undefined {
+  const scheduled = new Date(scheduledAt);
+  if (scheduled.getUTCHours() !== 0 || scheduled.getUTCMinutes() !== 0) return undefined;
+
+  const beforeDay = listUtcDays(scheduledAt, historyDays)[0]!;
+  return {
+    beforeDay,
+    beforeMs: Date.parse(`${beforeDay}T00:00:00.000Z`),
+  };
 }
 
 export function logStructuredRecord(record: SafeStructuredRecord): void {

@@ -321,7 +321,8 @@ describe("App ready content", () => {
 
     const footer = screen.getByRole("contentinfo");
     expect(within(footer).getByRole("link", { name: "Cloudflare Workers" })).toBeInTheDocument();
-    expect(within(footer).getByRole("link", { name: "Project source" })).toBeInTheDocument();
-    expect(within(footer).getAllByRole("link")).toHaveLength(2);
+    expect(within(footer).getByRole("link", { name: "Cloudflare Workers" })).toBeInTheDocument();
+    expect(within(footer).queryByRole("link", { name: "Project source" })).not.toBeInTheDocument();
+    expect(within(footer).getAllByRole("link")).toHaveLength(1);
   });
 });

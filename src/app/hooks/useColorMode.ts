@@ -11,7 +11,7 @@ export interface ColorModeState {
   toggle(): void;
 }
 
-const storageKey = "cfstatuspage-color-mode";
+const storageKey = "status-page-color-mode";
 const darkModeQuery = "(prefers-color-scheme: dark)";
 
 function isColorModePreference(value: string | null): value is ColorModePreference {

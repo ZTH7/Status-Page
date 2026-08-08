@@ -1,4 +1,11 @@
-import { mkdirSync, readFileSync, realpathSync, statSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  realpathSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -13,9 +20,48 @@ import type {
 const rootDirectory = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const publicDirectory = resolve(rootDirectory, "public");
 const realPublicDirectory = realpathSync(publicDirectory);
+const siteConfigVariable = "STATUS_SITE_CONFIG_YAML";
+const monitorsConfigVariable = "STATUS_MONITORS_CONFIG_YAML";
 
 function readProjectFile(relativePath: string): string {
   return readFileSync(resolve(rootDirectory, relativePath), "utf8");
+}
+
+function nonEmptyEnvironmentValue(name: string): string | undefined {
+  const value = process.env[name];
+  return value === undefined || value.trim().length === 0 ? undefined : value;
+}
+
+function configSources(): { siteSource: string; monitorsSource: string } {
+  const siteFromEnvironment = nonEmptyEnvironmentValue(siteConfigVariable);
+  const monitorsFromEnvironment = nonEmptyEnvironmentValue(monitorsConfigVariable);
+  if (siteFromEnvironment !== undefined || monitorsFromEnvironment !== undefined) {
+    if (siteFromEnvironment === undefined || monitorsFromEnvironment === undefined) {
+      throw new Error(
+        `${siteConfigVariable} and ${monitorsConfigVariable} must be configured together.`,
+      );
+    }
+    return { siteSource: siteFromEnvironment, monitorsSource: monitorsFromEnvironment };
+  }
+
+  const localSitePath = "config/site.yaml";
+  const localMonitorsPath = "config/monitors.yaml";
+  const hasLocalSite = existsSync(resolve(rootDirectory, localSitePath));
+  const hasLocalMonitors = existsSync(resolve(rootDirectory, localMonitorsPath));
+  if (hasLocalSite || hasLocalMonitors) {
+    if (!hasLocalSite || !hasLocalMonitors) {
+      throw new Error(`${localSitePath} and ${localMonitorsPath} must both exist.`);
+    }
+    return {
+      siteSource: readProjectFile(localSitePath),
+      monitorsSource: readProjectFile(localMonitorsPath),
+    };
+  }
+
+  return {
+    siteSource: readProjectFile("config/site.example.yaml"),
+    monitorsSource: readProjectFile("config/monitors.example.yaml"),
+  };
 }
 
 function publicAssetExists(relativePath: string): boolean {
@@ -67,7 +113,7 @@ function themeBootstrap(theme: ThemeId, colorMode: ColorModePreference): string 
   const defaultPreference = ${JSON.stringify(colorMode)};
   let preference = defaultPreference;
   try {
-    const storedPreference = window.localStorage.getItem("cfstatuspage-color-mode");
+    const storedPreference = window.localStorage.getItem("status-page-color-mode");
     if (storedPreference === "light" || storedPreference === "dark" || storedPreference === "system") {
       preference = storedPreference;
     }
@@ -81,9 +127,10 @@ function themeBootstrap(theme: ThemeId, colorMode: ColorModePreference): string 
 `;
 }
 
+const privateConfig = configSources();
 const appConfig = parseConfigSources({
-  siteSource: readProjectFile("config/site.yaml"),
-  monitorsSource: readProjectFile("config/monitors.yaml"),
+  siteSource: privateConfig.siteSource,
+  monitorsSource: privateConfig.monitorsSource,
   wranglerConfig: JSON.parse(readProjectFile("wrangler.jsonc")),
   assetExists: publicAssetExists,
 });

@@ -230,6 +230,26 @@ describe("runChecks", () => {
     expect(harness.persisted).toEqual([[]]);
   });
 
+  it("requests history cleanup only at the UTC day boundary", async () => {
+    const midnight = runnerHarness();
+    midnight.input.scheduledAt = Date.UTC(2026, 7, 5);
+    midnight.input.config.site.historyDays = 3;
+    await runChecks(midnight.input);
+
+    expect(midnight.persistCheckBatch).toHaveBeenCalledWith(midnight.db, expect.any(Array), {
+      beforeDay: "2026-08-03",
+      beforeMs: Date.UTC(2026, 7, 3),
+    });
+
+    const daytime = runnerHarness();
+    await runChecks(daytime.input);
+    expect(daytime.persistCheckBatch).toHaveBeenCalledWith(
+      daytime.db,
+      expect.any(Array),
+      undefined,
+    );
+  });
+
   it("starts every configured probe before allowing any probe to settle", async () => {
     const releases = [deferred<CheckResult>(), deferred<CheckResult>(), deferred<CheckResult>()];
     const started: string[] = [];

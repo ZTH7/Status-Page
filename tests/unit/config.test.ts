@@ -84,6 +84,25 @@ function sourcesWithLogo(logo: string) {
   return sources({ site: { logo } });
 }
 
+function generatorEnvironment(
+  siteOverrides: Record<string, unknown> = {},
+  monitors: Record<string, unknown>[] = [monitor],
+): NodeJS.ProcessEnv {
+  return {
+    ...process.env,
+    STATUS_SITE_CONFIG_YAML: stringify({ ...site, ...siteOverrides }),
+    STATUS_MONITORS_CONFIG_YAML: stringify({ monitors }),
+  };
+}
+
+function runConfigGenerator(environment = generatorEnvironment()): void {
+  execFileSync("npm", ["run", "config:generate"], {
+    cwd: process.cwd(),
+    env: environment,
+    stdio: "pipe",
+  });
+}
+
 describe("public branding and deployment entrypoint", () => {
   it("uses the neutral Status Page name and a square text-free logo", () => {
     const html = readFileSync("index.html", "utf8");
@@ -101,10 +120,20 @@ describe("public branding and deployment entrypoint", () => {
 
   it("builds before a direct Wrangler deployment", () => {
     const packageJson = JSON.parse(readFileSync("package.json", "utf8")) as {
+      name: string;
       scripts: Record<string, string>;
     };
+    const wranglerConfig = readFileSync("wrangler.jsonc", "utf8");
+    const deployWorkflow = readFileSync(".github/workflows/deploy.yml", "utf8");
 
+    expect(packageJson.name).toBe("status-page");
     expect(packageJson.scripts.deploy).toBe("npm run build && wrangler deploy");
+    expect(wranglerConfig).toContain('"name": "status-page"');
+    expect(wranglerConfig).toContain('"database_name": "status-page"');
+    expect(deployWorkflow).toContain("STATUS_SITE_CONFIG_YAML");
+    expect(deployWorkflow).toContain("STATUS_MONITORS_CONFIG_YAML");
+    expect(deployWorkflow).toContain("npm run build");
+    expect(`${wranglerConfig}${deployWorkflow}`).not.toMatch(/cfstatuspage/i);
   });
 });
 
@@ -197,21 +226,15 @@ describe("parseConfigSources", () => {
 });
 
 describe("config generator", () => {
-  it("emits deterministic public artifacts without monitor targets", () => {
-    execFileSync("npm", ["run", "config:generate"], {
-      cwd: process.cwd(),
-      stdio: "pipe",
-    });
+  it("uses injected private YAML and emits deterministic public artifacts without monitor targets", () => {
+    runConfigGenerator();
     const firstRun = [
       readFileSync("src/generated/config.ts", "utf8"),
       readFileSync("src/generated/public-config.ts", "utf8"),
       readFileSync("public/theme-bootstrap.js", "utf8"),
     ];
 
-    execFileSync("npm", ["run", "config:generate"], {
-      cwd: process.cwd(),
-      stdio: "pipe",
-    });
+    runConfigGenerator();
     const secondRun = [
       readFileSync("src/generated/config.ts", "utf8"),
       readFileSync("src/generated/public-config.ts", "utf8"),
@@ -219,44 +242,38 @@ describe("config generator", () => {
     ];
 
     expect(secondRun).toEqual(firstRun);
-    expect(firstRun[0]).toContain("https://www.zdaily.net/");
-    expect(firstRun[1]).toContain("Status Page");
-    expect(firstRun[1]).not.toMatch(/https:\/\/(?:www|vault|tools|drive)\.zdaily\.net/);
-    expect(firstRun[2]).not.toMatch(/https:\/\/(?:www|vault|tools|drive)\.zdaily\.net/);
+    expect(firstRun[0]).toContain("https://api.example.test/health");
+    expect(firstRun[1]).toContain("Example Status");
+    expect(firstRun[1]).not.toContain("https://api.example.test/health");
+    expect(firstRun[2]).not.toContain("https://api.example.test/health");
     expect(`${firstRun[1]}${firstRun[2]}`).not.toMatch(/SECRET_|WEBHOOK/i);
   });
 
+  it("rejects a partially configured build secret pair", () => {
+    expect(() =>
+      runConfigGenerator({
+        ...process.env,
+        STATUS_SITE_CONFIG_YAML: stringify(site),
+        STATUS_MONITORS_CONFIG_YAML: "",
+      }),
+    ).toThrow();
+  });
+
   it("rejects a public asset symlink that resolves outside public", () => {
-    const siteConfig = readFileSync("config/site.yaml", "utf8");
     let publicFixtureDirectory: string | undefined;
     let externalDirectory: string | undefined;
-    let siteConfigChanged = false;
 
     try {
       publicFixtureDirectory = mkdtempSync("public/.config-test-assets-");
-      externalDirectory = mkdtempSync(join(tmpdir(), "cfstatuspage-config-assets-"));
+      externalDirectory = mkdtempSync(join(tmpdir(), "status-page-config-assets-"));
       const externalAsset = join(externalDirectory, "outside-logo.svg");
       const linkedAsset = join(publicFixtureDirectory, "linked-logo.svg");
       const configuredLogo = `/${basename(publicFixtureDirectory)}/linked-logo.svg`;
       writeFileSync(externalAsset, "outside public", "utf8");
       symlinkSync(externalAsset, linkedAsset);
-      siteConfigChanged = true;
-      writeFileSync(
-        "config/site.yaml",
-        siteConfig.replace("logo: /logo.svg", `logo: ${configuredLogo}`),
-        "utf8",
-      );
 
-      expect(() =>
-        execFileSync("npm", ["run", "config:generate"], {
-          cwd: process.cwd(),
-          stdio: "pipe",
-        }),
-      ).toThrow();
+      expect(() => runConfigGenerator(generatorEnvironment({ logo: configuredLogo }))).toThrow();
     } finally {
-      if (siteConfigChanged) {
-        writeFileSync("config/site.yaml", siteConfig, "utf8");
-      }
       if (publicFixtureDirectory) {
         rmSync(publicFixtureDirectory, { recursive: true, force: true });
       }
@@ -267,30 +284,14 @@ describe("config generator", () => {
   });
 
   it("rejects a directory configured as a public asset", () => {
-    const siteConfig = readFileSync("config/site.yaml", "utf8");
     let assetDirectory: string | undefined;
-    let siteConfigChanged = false;
 
     try {
       assetDirectory = mkdtempSync("public/.config-test-assets-");
       const configuredLogo = `/${basename(assetDirectory)}`;
-      siteConfigChanged = true;
-      writeFileSync(
-        "config/site.yaml",
-        siteConfig.replace("logo: /logo.svg", `logo: ${configuredLogo}`),
-        "utf8",
-      );
 
-      expect(() =>
-        execFileSync("npm", ["run", "config:generate"], {
-          cwd: process.cwd(),
-          stdio: "pipe",
-        }),
-      ).toThrow();
+      expect(() => runConfigGenerator(generatorEnvironment({ logo: configuredLogo }))).toThrow();
     } finally {
-      if (siteConfigChanged) {
-        writeFileSync("config/site.yaml", siteConfig, "utf8");
-      }
       if (assetDirectory) {
         rmSync(assetDirectory, { recursive: true, force: true });
       }

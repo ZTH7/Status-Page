@@ -112,6 +112,17 @@ export const RECOVER_INCIDENT = `
     )
 `;
 
+export const DELETE_EXPIRED_DAILY_SUMMARIES = `
+  DELETE FROM daily_summaries
+  WHERE day < ?
+`;
+
+export const DELETE_EXPIRED_INCIDENTS = `
+  DELETE FROM incidents
+  WHERE recovered_at IS NOT NULL
+    AND recovered_at < ?
+`;
+
 function placeholders(count: number): string {
   return Array.from({ length: count }, () => "?").join(", ");
 }

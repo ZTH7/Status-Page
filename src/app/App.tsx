@@ -11,8 +11,6 @@ import { useMonitorSearch } from "./hooks/useMonitorSearch";
 import { useStatus } from "./hooks/useStatus";
 import { themeDecorations } from "./theme-registry";
 
-const projectSource = "https://github.com/eidam/cf-workers-status-page";
-
 export function App(props: { fetcher?: typeof fetch }): React.ReactElement {
   const status = useStatus(props.fetcher);
   const colorMode = useColorMode();
@@ -116,7 +114,6 @@ export function App(props: { fetcher?: typeof fetch }): React.ReactElement {
           <span>
             Powered by <a href="https://workers.cloudflare.com/">Cloudflare Workers</a>
           </span>
-          <a href={projectSource}>Project source</a>
         </div>
       </footer>
 

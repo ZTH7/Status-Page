@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "cfstatuspage",
+  "name": "status-page",
   "main": "./src/worker/index.ts",
   "compatibility_date": "2026-08-05",
   "assets": {
@@ -10,9 +10,8 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "cfstatuspage",
-      "database_id": "00000000-0000-0000-0000-000000000000",
-      "migrations_dir": "migrations"
+      "database_name": "status-page",
+      "database_id": "00000000-0000-0000-0000-000000000000"
     }
   ],
   "triggers": { "crons": ["* * * * *"] }

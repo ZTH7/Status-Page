@@ -374,6 +374,39 @@ describe("scheduled-check persistence", () => {
 
     expect(await loadMonitorStates(env.DB, [])).toEqual(new Map());
   });
+
+  it("removes expired summaries and recovered incidents while preserving window edges", async () => {
+    const summary = env.DB.prepare(`INSERT INTO daily_summaries
+      (monitor_id, day, location, check_count, failed_check_count,
+       response_time_sum, response_count, highest_severity)
+      VALUES (?, ?, 'sfo', 1, 0, 40, 1, 'operational')`);
+    const incident = env.DB.prepare(`INSERT INTO incidents
+      (id, monitor_id, first_failed_at, degraded_at, outage_at, recovered_at, highest_severity)
+      VALUES (?, 'blog', ?, ?, NULL, ?, 'degraded')`);
+    const beforeMs = Date.UTC(2026, 7, 3);
+
+    await env.DB.batch([
+      summary.bind("blog", "2026-08-02"),
+      summary.bind("blog", "2026-08-03"),
+      summary.bind("blog", "2026-08-04"),
+      incident.bind("expired", beforeMs - 2_000, beforeMs - 2_000, beforeMs - 1),
+      incident.bind("edge", beforeMs - 1_000, beforeMs - 1_000, beforeMs),
+      incident.bind("active", beforeMs - 3_000, beforeMs - 3_000, null),
+    ]);
+
+    await expect(
+      persistCheckBatch(env.DB, [], { beforeDay: "2026-08-03", beforeMs }),
+    ).resolves.toEqual({ appliedMonitorIds: [] });
+
+    expect(await rows("SELECT day FROM daily_summaries ORDER BY day")).toEqual([
+      { day: "2026-08-03" },
+      { day: "2026-08-04" },
+    ]);
+    expect(await rows("SELECT id FROM incidents ORDER BY id")).toEqual([
+      { id: "active" },
+      { id: "edge" },
+    ]);
+  });
 });
 
 describe("strict row conversion", () => {

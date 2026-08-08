@@ -1,5 +1,5 @@
 {
-  "name": "cfstatuspage",
+  "name": "status-page",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -22,8 +22,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check": "npm run format:check && npm run typecheck && npm test && npm run build",
-    "db:migrate:local": "wrangler d1 migrations apply DB --local",
-    "migrate:legacy": "tsx scripts/migrate-legacy-kv.ts",
+    "db:init:local": "wrangler d1 execute DB --local --file database/schema.sql",
     "deploy": "npm run build && wrangler deploy"
   },
   "engines": {

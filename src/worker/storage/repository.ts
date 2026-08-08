@@ -1,6 +1,8 @@
 import type { CheckResult, MonitorState, MonitorTransition } from "../../domain/types";
 import { monitorStateFromRow, type MonitorStateRow } from "./rows";
 import {
+  DELETE_EXPIRED_DAILY_SUMMARIES,
+  DELETE_EXPIRED_INCIDENTS,
   ESCALATE_INCIDENT,
   INSERT_INCIDENT,
   RECOVER_INCIDENT,
@@ -16,6 +18,11 @@ export interface PersistedCheck {
 
 export interface PersistCheckBatchResult {
   appliedMonitorIds: readonly string[];
+}
+
+export interface HistoryRetentionCutoff {
+  beforeDay: string;
+  beforeMs: number;
 }
 
 export async function loadMonitorStates(
@@ -40,9 +47,8 @@ export async function loadMonitorStates(
 export async function persistCheckBatch(
   db: D1Database,
   checks: readonly PersistedCheck[],
+  retentionCutoff?: HistoryRetentionCutoff,
 ): Promise<PersistCheckBatchResult> {
-  if (checks.length === 0) return { appliedMonitorIds: [] };
-
   const statements: D1PreparedStatement[] = [];
   const stateStatementIndexes = new Map<number, string>();
 
@@ -114,6 +120,13 @@ export async function persistCheckBatch(
           .bind(incident.recoveredAt, incident.incidentId, result.monitorId, result.checkedAt),
       );
     }
+  }
+
+  if (retentionCutoff !== undefined) {
+    statements.push(
+      db.prepare(DELETE_EXPIRED_DAILY_SUMMARIES).bind(retentionCutoff.beforeDay),
+      db.prepare(DELETE_EXPIRED_INCIDENTS).bind(retentionCutoff.beforeMs),
+    );
   }
 
   if (statements.length === 0) return { appliedMonitorIds: [] };

@@ -35,6 +35,9 @@ jobs:
     needs: verify
     runs-on: ubuntu-latest
     environment: production
+    env:
+      STATUS_SITE_CONFIG_YAML: ${{ secrets.STATUS_SITE_CONFIG_YAML }}
+      STATUS_MONITORS_CONFIG_YAML: ${{ secrets.STATUS_MONITORS_CONFIG_YAML }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -45,6 +48,15 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
+      - name: Require private deployment configuration
+        shell: bash
+        run: |
+          if [[ -z "$STATUS_SITE_CONFIG_YAML" || -z "$STATUS_MONITORS_CONFIG_YAML" ]]; then
+            echo "STATUS_SITE_CONFIG_YAML and STATUS_MONITORS_CONFIG_YAML are required."
+            exit 1
+          fi
+      - name: Build with private configuration
+        run: npm run build
       - name: Deploy Worker
         uses: cloudflare/wrangler-action@v3
         with:

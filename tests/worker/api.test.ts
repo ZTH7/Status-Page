@@ -410,6 +410,23 @@ describe("public status response", () => {
     expect(response.overall).toBe("unknown");
     expect(response.latestCompletedAt).toBeNull();
   });
+
+  it("renders a new UTC day without checks as unknown while preserving current state", async () => {
+    await seedPublicSnapshot();
+
+    const response = await buildStatusResponse({
+      config: { ...API_CONFIG, site: { ...API_CONFIG.site, historyDays: 2 } },
+      db: env.DB,
+      now: () => Date.UTC(2026, 7, 6, 1),
+    });
+    const privateMonitor = response.monitors.find(({ id }) => id === "private");
+
+    expect(privateMonitor?.level).toBe("outage");
+    expect(privateMonitor?.history).toEqual([
+      { day: "2026-08-05", level: "unknown", checks: 0, failures: 0, locations: [] },
+      { day: "2026-08-06", level: "unknown", checks: 0, failures: 0, locations: [] },
+    ]);
+  });
 });
 
 describe("status API routing", () => {

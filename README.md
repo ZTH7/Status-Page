@@ -8,7 +8,7 @@
   基于 Cloudflare Workers 与 D1 的轻量级公开状态页。
 </p>
 
-Status Page 按 1、5 或 10 分钟的频率检查 HTTP 服务，将实时状态、每日汇总和故障事件保存到 Cloudflare D1，并通过只读网页公开展示。项目没有登录、后台管理和在线编辑功能；站点、监控项、阈值和主题均通过仓库中的配置文件管理。
+Status Page 按 1、5 或 10 分钟的频率检查 HTTP 服务，将实时状态、每日汇总和故障事件保存到 Cloudflare D1，并通过只读网页公开展示。项目没有登录、后台管理和在线编辑功能；站点、监控项、阈值和主题在构建时从私有配置读取，公开仓库只需保留示例配置。
 
 主要功能：
 
@@ -16,7 +16,7 @@ Status Page 按 1、5 或 10 分钟的频率检查 HTTP 服务，将实时状态
 - 默认连续失败 2 次变为黄色，首个失败持续 60 分钟后变为红色；
 - 默认连续成功 2 次恢复绿色；
 - 红色升级不发送通知，黄色故障和绿色恢复各通知一次；
-- 默认保留并展示 90 天历史记录；
+- 默认保留并展示最近 90 天历史记录，并每日自动清理更早的数据；
 - 支持明暗模式、简约默认主题和可选星露谷风格主题；
 - 可选 Slack、Telegram 和 Discord 通知；
 - 公开页面只读，不提供任何管理功能。
@@ -34,14 +34,14 @@ Status Page 按 1、5 或 10 分钟的频率检查 HTTP 服务，将实时状态
 
 ## 第一步：创建 Cloudflare D1 数据库
 
-D1 是本项目使用的结构化 SQL 数据库。数据库名称建议保持为 `cfstatuspage`，它只是 Cloudflare 内部资源名，不会显示在网站上。
+D1 是本项目使用的结构化 SQL 数据库。数据库名称建议保持为 `status-page`，它只是 Cloudflare 内部资源名，不会显示在网站上。
 
 ### 方式一：通过 Cloudflare 控制台创建
 
 1. 登录 Cloudflare Dashboard；
 2. 打开 **Storage & Databases → D1 SQL database**；
 3. 选择 **Create Database**；
-4. 数据库名称填写 `cfstatuspage`；
+4. 数据库名称填写 `status-page`；
 5. 创建后复制数据库的 UUID。
 
 ### 方式二：通过 Wrangler 创建
@@ -56,7 +56,7 @@ npx wrangler login
 创建数据库：
 
 ```bash
-npx wrangler d1 create cfstatuspage
+npx wrangler d1 create status-page
 ```
 
 命令完成后会返回类似下面的配置：
@@ -64,7 +64,7 @@ npx wrangler d1 create cfstatuspage
 ```json
 {
   "binding": "DB",
-  "database_name": "cfstatuspage",
+  "database_name": "status-page",
   "database_id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 }
 ```
@@ -79,9 +79,8 @@ npx wrangler d1 create cfstatuspage
 "d1_databases": [
   {
     "binding": "DB",
-    "database_name": "cfstatuspage",
-    "database_id": "00000000-0000-0000-0000-000000000000",
-    "migrations_dir": "migrations"
+    "database_name": "status-page",
+    "database_id": "00000000-0000-0000-0000-000000000000"
   }
 ]
 ```
@@ -95,42 +94,51 @@ npx wrangler d1 create cfstatuspage
 不要修改：
 
 - `binding: "DB"`；
-- `database_name: "cfstatuspage"`；
-- `migrations_dir: "migrations"`。
+- `database_name: "status-page"`。
 
 D1 UUID 是资源标识符，不是访问密钥，可以保存在 `wrangler.jsonc` 中。Cloudflare API Token、Webhook 和机器人 Token 则不能提交到 GitHub。
 
 ## 第三步：初始化 D1 表结构
 
-确保 Wrangler 已登录到刚才创建 D1 的同一个 Cloudflare 账户，然后执行：
+`database/schema.sql` 保存空数据库所需的建表语句。它只负责创建当前版本运行所需的表和索引，不包含任何旧项目数据处理逻辑。
+
+Wrangler 已包含在本项目的开发依赖中，执行 `npm install` 后通过 `npx wrangler` 使用即可，不需要全局安装。确保 Wrangler 已登录到刚才创建 D1 的同一个 Cloudflare 账户，然后执行：
 
 ```bash
-npx wrangler d1 migrations apply DB --remote
+npx wrangler d1 execute DB --remote --file database/schema.sql
 ```
 
-Wrangler 会询问是否继续，确认目标数据库正确后选择确认。
+Wrangler 会询问是否继续，确认目标数据库正确后选择确认。远程表结构初始化不会在 GitHub Actions 或 Cloudflare Workers Builds 中自动执行。
 
-检查是否还有未执行的表结构文件：
-
-```bash
-npx wrangler d1 migrations list DB --remote
-```
-
-正常情况下应显示没有待执行项目。远程表结构初始化不会在 GitHub Actions 或 Cloudflare Workers Builds 中自动执行，后续新增表结构文件时也应先人工检查再应用。
+如果不想在本机执行 Wrangler，也可以在 Cloudflare Dashboard 的 D1 Console 中执行 `database/schema.sql`。初始化 D1 只需执行一次，日常部署不需要重复创建数据库。
 
 ## 第四步：配置网站
 
-项目有三个需要关注的配置位置：
+公开仓库只保留两份无敏感信息的模板：
 
-| 文件或位置             | 用途                                       |
-| ---------------------- | ------------------------------------------ |
-| `config/site.yaml`     | 网站信息、默认主题、历史天数和全局故障阈值 |
-| `config/monitors.yaml` | 被监控的服务及每项服务的可选覆盖配置       |
-| `wrangler.jsonc`       | D1 绑定、Worker 名称和检查频率             |
+| 仓库文件                       | 用途                                       |
+| ------------------------------ | ------------------------------------------ |
+| `config/site.example.yaml`     | 网站信息、默认主题、历史天数和全局故障阈值 |
+| `config/monitors.example.yaml` | 被监控的服务及每项服务的可选覆盖配置       |
+| `wrangler.jsonc`               | D1 绑定、Worker 名称和检查频率             |
 
-配置文件使用 YAML。缩进只能使用空格，布尔值写成 `true` 或 `false`，不要使用 Tab。修改任一配置后都需要重新构建并部署。
+实际部署配置通过两个完整的 YAML 字符串传入：
 
-编辑 `config/site.yaml`，下面是一份完整示例：
+| 构建 Secret 名称              | 内容来源          |
+| ----------------------------- | ----------------- |
+| `STATUS_SITE_CONFIG_YAML`     | 完整的网站 YAML   |
+| `STATUS_MONITORS_CONFIG_YAML` | 完整的监控项 YAML |
+
+构建脚本的读取优先级为：两个构建 Secret → 本地的 `config/site.yaml` 与 `config/monitors.yaml` → 仓库中的两份 example。两个 Secret 或两个本地文件都必须成对提供，避免误把示例配置部署到生产环境。
+
+本地编辑时，先复制模板：
+
+```bash
+cp config/site.example.yaml config/site.yaml
+cp config/monitors.example.yaml config/monitors.yaml
+```
+
+这两个本地文件已加入 `.gitignore`。配置文件使用 YAML，缩进只能使用空格，布尔值写成 `true` 或 `false`，不要使用 Tab。下面是一份完整的网站配置示例：
 
 ```yaml
 title: Status Page
@@ -179,7 +187,7 @@ labels:
 | `logo`                  | `public/` 目录中的 Logo 路径                                |
 | `theme`                 | `default` 或 `stardew-inspired`                             |
 | `colorMode`             | `system`、`light` 或 `dark`                                 |
-| `historyDays`           | 前端展示的历史天数，范围为 1–365                            |
+| `historyDays`           | 历史数据的保留和展示天数，范围为 1–365                      |
 | `requestTimeoutSeconds` | 默认请求超时秒数，必须短于选定的 Cron 间隔                  |
 | `userAgent`             | 检查目标服务时发送的自定义 HTTP `User-Agent`，最长 256 字符 |
 | `degradedAfterFailures` | 连续失败多少次后变黄                                        |
@@ -234,7 +242,7 @@ colorMode: system
 
 ## 第五步：配置监控项
 
-编辑 `config/monitors.yaml`：
+本地编辑 `config/monitors.yaml`，Cloudflare 部署时则把相同内容保存到 `STATUS_MONITORS_CONFIG_YAML` 构建 Secret：
 
 ```yaml
 monitors:
@@ -274,7 +282,7 @@ monitors:
 
 `expectStatus` 检查最终响应是否等于指定状态码。`followRedirect: true` 会跟随跳转并检查最终响应；设置为 `false` 时不跟随跳转。`presentationLogo` 与网站 Logo 一样，必须指向 `public/` 中真实存在的文件，例如上述 `/logo.svg` 对应 `public/logo.svg`。可以先把每项服务的图标放进 `public/services/`，再改成 `/services/文件名.svg`。不需要单项覆盖时，删除 `presentationLogo`、`timeoutSeconds` 和 `thresholds` 即可使用全局配置。
 
-设置 `linkable: false` 后，公开 API 不会返回该监控项的 URL，服务卡片也不会链接到目标。但 URL 仍然存在于公开 GitHub 仓库的配置中，因此不要填写带密码、Token、内网凭据或签名参数的地址。
+设置 `linkable: false` 后，公开 API 不会返回该监控项的 URL，服务卡片也不会链接到目标。私有构建配置不会写入 GitHub，但监控地址仍会被 Worker 用来发起请求；不要在 URL 中携带密码、Token 或签名参数。设置为 `linkable: true` 等同于明确允许该 URL 出现在公开 API 和页面链接中。
 
 每次修改后先检查配置：
 
@@ -310,7 +318,7 @@ npm run check
 
 ## 第七步：本地检查
 
-上传 GitHub 前执行：
+确认已按第四步创建两个本地配置文件，然后在上传 GitHub 前执行：
 
 ```bash
 npm install
@@ -322,7 +330,7 @@ npm run check
 如需本地预览：
 
 ```bash
-npm run db:migrate:local
+npm run db:init:local
 npm run dev
 ```
 
@@ -334,13 +342,13 @@ npm run dev
 package.json
 wrangler.jsonc
 config/
-migrations/
+database/
 public/
 src/
 themes/
 ```
 
-不要上传 `.dev.vars`、`.wrangler/`、`dist/`、`node_modules/` 或任何 API Token、Webhook 和机器人凭据。这些本地目录已写入 `.gitignore`。
+不要上传 `config/site.yaml`、`config/monitors.yaml`、`.dev.vars`、`.env*`、`.wrangler/`、`dist/`、`node_modules/` 或任何 API Token、Webhook 和机器人凭据；它们都已写入 `.gitignore`。仓库中应只出现 `config/*.example.yaml`。如果实际配置曾经被加入版本控制，仅添加 `.gitignore` 不会隐藏旧记录，公开仓库前必须确认 GitHub 文件列表和历史中都没有它们。
 
 本项目已经按独立仓库组织；Cloudflare 的 Root directory 保持为空即可。
 
@@ -362,7 +370,7 @@ Workers & Pages
 
 | 设置                          | 填写内容                       |
 | ----------------------------- | ------------------------------ |
-| Worker name                   | `cfstatuspage`                 |
+| Worker name                   | `status-page`                  |
 | Production branch             | `main`                         |
 | Root directory                | 项目位于仓库根目录时留空       |
 | Build command                 | `npm run check`                |
@@ -375,11 +383,35 @@ Workers & Pages
 | -------------- | ---- |
 | `NODE_VERSION` | `22` |
 
+然后在同一位置添加两个加密的 **Secret**，值应粘贴为对应 YAML 文件的完整内容，而不是文件路径：
+
+| Secret 名称                   | 值                                     |
+| ----------------------------- | -------------------------------------- |
+| `STATUS_SITE_CONFIG_YAML`     | 本地 `config/site.yaml` 的完整内容     |
+| `STATUS_MONITORS_CONFIG_YAML` | 本地 `config/monitors.yaml` 的完整内容 |
+
+这两个是构建阶段 Secret，只在生成 Worker 配置时使用；Telegram 等通知凭据是 Worker 运行时 Secret，两类设置位置和用途不同。不要把监控 YAML 添加成普通明文变量。
+
 Cloudflare 连接 GitHub 时会为 Workers Builds 配置部署授权，不需要把 `CLOUDFLARE_API_TOKEN` 或 `CLOUDFLARE_ACCOUNT_ID` 写进仓库。
 
-内部 Worker 名称必须与 `wrangler.jsonc` 中的 `name: "cfstatuspage"` 一致。它不会显示在网站标题中，网站仍显示 `Status Page`。
+内部 Worker 名称必须与 `wrangler.jsonc` 中的 `name: "status-page"` 一致。它不会显示在网站标题中，网站仍显示 `Status Page`。
 
 确认后选择 **Save and Deploy**。构建过程会安装依赖、执行完整检查、生成并部署前端与 Worker、绑定 D1，并应用一个 Cron Trigger 配置。
+
+### GitHub Deploy Action 是什么
+
+仓库中的 `.github/workflows/deploy.yml` 有两个用途：每次 push 或 pull request 自动检查代码；以及在 GitHub Actions 页面手动选择 `Run workflow` 并勾选 `deploy` 后，作为 Cloudflare Connect Repo 之外的备用生产部署入口。它不会自动初始化 D1、执行 D1 表结构 SQL 或搬迁旧数据。
+
+只使用 Cloudflare Connect Repo 时，不需要配置 GitHub 部署凭据，也不需要运行手动 Deploy job。若要使用这个备用入口，请在 GitHub 仓库的 Actions Secrets 中配置：
+
+| GitHub Secret                 | 用途                         |
+| ----------------------------- | ---------------------------- |
+| `STATUS_SITE_CONFIG_YAML`     | 完整网站 YAML                |
+| `STATUS_MONITORS_CONFIG_YAML` | 完整监控项 YAML              |
+| `CLOUDFLARE_API_TOKEN`        | 限定范围的 Worker 部署 Token |
+| `CLOUDFLARE_ACCOUNT_ID`       | Cloudflare 账户 ID           |
+
+Deploy job 会先验证两个私有配置均存在并完成构建，再调用 Wrangler 发布。工作流不会主动输出配置值；如果 YAML 解析失败，仍应检查错误日志后再决定是否公开分享。Cloudflare Connect Repo 与手动 Action 共享同一份代码，但各自保存一套 Secret；使用哪条部署路径，就维护哪一处配置。
 
 ## 第十步：配置 Telegram Bot 提醒（可选）
 
@@ -481,9 +513,9 @@ npx wrangler d1 execute DB --remote --command "SELECT COUNT(*) AS days FROM dail
 确认 `workers.dev` 页面、API 和定时检查均正常后：
 
 1. 在 Worker 的 **Settings → Domains & Routes** 中添加自定义域名；
-2. 将 `config/site.yaml` 的 `url` 改为最终地址；
-3. 推送修改；
-4. 等待 Cloudflare Connect Repo 自动重新构建和部署；
+2. 更新 Cloudflare Workers Builds 中的 `STATUS_SITE_CONFIG_YAML`，将 `url` 改为最终地址；
+3. 手动触发一次新构建，或推送一次代码变更触发构建；
+4. 等待 Cloudflare Connect Repo 重新部署；
 5. 检查自定义域名和 `/api/status`。
 
 ## 后续更新与回滚
@@ -492,26 +524,26 @@ npx wrangler d1 execute DB --remote --command "SELECT COUNT(*) AS days FROM dail
 
 - 推送到 `main` 会执行 `npm run check`，成功后自动部署；
 - 其他启用的分支使用 `wrangler versions upload` 生成预览版本；
-- 配置、监控项和主题的修改都需要重新部署；
+- 配置、监控项和主题的修改应更新对应的 Cloudflare Build Secret，并触发重新部署；
 - 回滚 Worker 版本只回滚代码和静态资源，不会回滚 D1 数据或表结构。
 
 如需回滚，在 Cloudflare Worker 的版本历史中选择之前验证过的版本。出现数据库问题时，优先使用只读查询诊断，不要删除或清空 D1。
 
 ## 常用命令
 
-| 命令                       | 用途                           |
-| -------------------------- | ------------------------------ |
-| `npm run dev`              | 启动本地开发环境               |
-| `npm run check`            | 类型检查、全部测试和生产构建   |
-| `npm run db:migrate:local` | 初始化本地 D1 表结构           |
-| `npm run deploy`           | 从本地构建并通过 Wrangler 部署 |
+| 命令                    | 用途                           |
+| ----------------------- | ------------------------------ |
+| `npm run dev`           | 启动本地开发环境               |
+| `npm run check`         | 类型检查、全部测试和生产构建   |
+| `npm run db:init:local` | 初始化本地 D1 表结构           |
+| `npm run deploy`        | 从本地构建并通过 Wrangler 部署 |
 
 更严格的预览、生产切换和回滚顺序见 [运维手册](docs/operations.md)。
 
 ## Cloudflare 官方文档
 
 - [Cloudflare D1 入门](https://developers.cloudflare.com/d1/get-started/)
-- [D1 表结构版本管理](https://developers.cloudflare.com/d1/reference/migrations/)
+- [D1 Wrangler 命令](https://developers.cloudflare.com/d1/wrangler-commands/)
 - [Workers Builds](https://developers.cloudflare.com/workers/ci-cd/builds/)
 - [Workers Builds 配置](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/)
 - [Cloudflare Vite 插件](https://developers.cloudflare.com/workers/vite-plugin/)
