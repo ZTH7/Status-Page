@@ -33,6 +33,22 @@ function normalizeError(value: unknown, timedOut: boolean): ErrorCode {
   return "network";
 }
 
+function safeNetworkDiagnostic(value: unknown, targetUrl: string): string | undefined {
+  if (!(value instanceof TypeError)) return undefined;
+
+  const diagnostic = value.message
+    .replaceAll(targetUrl, "<target-url>")
+    .replace(/https?:\/\/[^\s"'<>]+/gi, "<url>")
+    .replace(/\b(?:[a-z0-9-]+\.)+[a-z]{2,}\b/gi, "<host>")
+    .replace(/\b(?:\d{1,3}\.){3}\d{1,3}\b/g, "<ip>")
+    .replace(/\b[A-Za-z0-9_-]{24,}\b/g, "<opaque>")
+    .replace(/[\r\n\t]+/g, " ")
+    .trim()
+    .slice(0, 160);
+
+  return diagnostic || "TypeError without a message";
+}
+
 export async function probeMonitor(
   monitor: MonitorConfig,
   checkedAt: number,
@@ -68,6 +84,7 @@ export async function probeMonitor(
       errorCode: null,
     };
   } catch (error) {
+    const diagnostic = timedOut ? undefined : safeNetworkDiagnostic(error, monitor.url);
     return {
       monitorId: monitor.id,
       checkedAt,
@@ -77,6 +94,7 @@ export async function probeMonitor(
       responseMs: null,
       location,
       errorCode: normalizeError(error, timedOut),
+      ...(diagnostic === undefined ? {} : { diagnostic }),
     };
   } finally {
     dependencies.clearTimer(timer);

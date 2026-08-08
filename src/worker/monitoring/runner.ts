@@ -12,6 +12,7 @@ import type {
 interface SafeResultRecord {
   monitorId: string;
   errorCode: ErrorCode | null;
+  diagnostic?: string;
 }
 
 interface MonitoringRecord {
@@ -102,7 +103,11 @@ export async function runChecks(input: RunChecksInput): Promise<RunSummary> {
     };
   });
   const counts = countResults(results);
-  const safeResults = results.map(({ monitorId, errorCode }) => ({ monitorId, errorCode }));
+  const safeResults = results.map(({ monitorId, errorCode, diagnostic }) => ({
+    monitorId,
+    errorCode,
+    ...(diagnostic === undefined ? {} : { diagnostic }),
+  }));
 
   let persisted: PersistCheckBatchResult;
   try {

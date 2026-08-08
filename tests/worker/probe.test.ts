@@ -232,6 +232,31 @@ describe("probeMonitor", () => {
     });
     expect(JSON.stringify(result)).not.toContain(thrown.message);
   });
+
+  it("keeps a bounded network diagnostic while redacting URLs, hosts, IPs, and opaque values", async () => {
+    const opaque = "abcdefghijklmnopqrstuvwxyz0123456789";
+    const fetcher = vi.fn(async () =>
+      Promise.reject(
+        new TypeError(
+          `Fetch https://status.example.test/health failed via private.example at 192.0.2.1 ${opaque}`,
+        ),
+      ),
+    ) as unknown as typeof fetch;
+
+    const result = await probeMonitor(
+      monitor(),
+      CHECKED_AT,
+      "SJC",
+      timerDependencies(fetcher, [99]).dependencies,
+    );
+
+    expect(result).toMatchObject({
+      errorCode: "network",
+      diagnostic: "Fetch <target-url> failed via <host> at <ip> <opaque>",
+    });
+    expect(JSON.stringify(result)).not.toMatch(/status\.example|private\.example|192\.0\.2\.1/);
+    expect(JSON.stringify(result)).not.toContain(opaque);
+  });
 });
 
 describe("resolveLocation", () => {

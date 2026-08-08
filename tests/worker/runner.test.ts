@@ -398,6 +398,30 @@ describe("runChecks", () => {
     ]);
   });
 
+  it("includes only the probe's sanitized diagnostic in its structured run record", async () => {
+    const harness = runnerHarness({
+      probe: async () =>
+        result("blog", false, {
+          httpStatus: null,
+          responseMs: null,
+          errorCode: "network",
+          diagnostic: "Network connection lost.",
+        }),
+    });
+
+    await runChecks(harness.input);
+
+    expect(harness.logs[0]).toMatchObject({
+      results: [
+        {
+          monitorId: "blog",
+          errorCode: "network",
+          diagnostic: "Network connection lost.",
+        },
+      ],
+    });
+  });
+
   it("rethrows a non-duplicate storage error unchanged after one fixed safe failure log", async () => {
     const storageError = new Error("D1 unavailable at https://private.example token-123");
     const harness = runnerHarness({ persist: async () => Promise.reject(storageError) });

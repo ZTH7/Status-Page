@@ -10,6 +10,7 @@ export interface CheckResult {
   responseMs: number | null;
   location: string;
   errorCode: ErrorCode | null;
+  diagnostic?: string;
 }
 
 export interface MonitorState {
