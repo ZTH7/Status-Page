@@ -1,9 +1,9 @@
 ---
-name: CFStatusPage Stardew-Inspired Theme
+name: Status Page Stardew-Inspired Theme
 description: An original rural pixel-art day/night world wrapped around clear paper status cards.
 ---
 
-# Design System: CFStatusPage Stardew-Inspired Theme
+# Design System: Status Page Stardew-Inspired Theme
 
 ## Overview
 

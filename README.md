@@ -14,7 +14,7 @@
   </a>
 </p>
 
-Status Page 定时检查 HTTP 服务，把当前状态、每日汇总和故障区间保存到 Cloudflare D1，并通过只读网页公开展示。项目没有登录、后台管理和在线编辑功能；站点与监控配置保存在 Cloudflare 加密的构建 Secret 中，不需要提交到公开仓库。
+Status Page 定时检查 HTTP 服务，把当前状态、每日汇总和故障区间保存到 Cloudflare D1，并通过只读网页公开展示。站点与监控配置保存在 Cloudflare 加密的构建 Secret 中，公开仓库只包含配置模板。
 
 主要功能：
 
@@ -23,14 +23,14 @@ Status Page 定时检查 HTTP 服务，把当前状态、每日汇总和故障�
 - 默认连续失败 2 次变为黄色，首次失败持续 60 分钟后变为红色；
 - 默认连续成功 2 次恢复绿色；
 - 黄色故障和绿色恢复各通知一次，升级红色不通知；
-- 使用每日聚合而不是保存每分钟的原始结果；
+- 使用紧凑的每日聚合记录检查历史；
 - 默认保留并展示最近 90 天历史，并每日清理更早的数据；
 - 支持明暗模式、默认主题和星露谷风格主题；
 - 可选 Telegram、Slack 和 Discord 通知。
 
 ## 纯网页部署
 
-部署只需要 GitHub 与 Cloudflare 账户，不需要在电脑上安装 Node.js、npm 或 Wrangler，也不需要克隆仓库或执行命令。
+部署流程在 GitHub 与 Cloudflare 网页中完成。
 
 仓库中的 `.node-version` 会让 Cloudflare Workers Builds 自动使用 Node.js 22。
 
@@ -44,7 +44,7 @@ Status Page 定时检查 HTTP 服务，把当前状态、每日汇总和故障�
 4. 接受项目自动识别的构建与部署设置；
 5. 创建项目。
 
-Cloudflare 会在你的 GitHub 账户中创建一份独立仓库副本、配置 Workers Builds、创建并绑定 D1，然后部署 Worker。这个方式不保留 GitHub 的 Fork 关系，但后续代码和部署完全属于你的账户。
+Cloudflare 会在你的 GitHub 账户中创建一份独立仓库副本、配置 Workers Builds、创建并绑定 D1，然后部署 Worker。仓库和部署资源都属于你的账户。
 
 首次生产部署必须提供两份私有配置。如果设置向导允许添加 **Build variables and secrets**，请直接按下一节填写。如果首次构建先开始并提示缺少 `STATUS_SITE_CONFIG_YAML` 与 `STATUS_MONITORS_CONFIG_YAML`，这是预期的安全保护：添加两个 Secret 后在 Cloudflare 的部署页面点击 **Retry deployment** 即可。
 
@@ -69,7 +69,7 @@ Cloudflare 会在你的 GitHub 账户中创建一份独立仓库副本、配置 
 | Deploy command                | `npm run deploy`               |
 | Non-production deploy command | `npx wrangler versions upload` |
 
-仓库已经声明 D1 binding。Cloudflare 会自动创建资源并写入实际绑定，不需要复制数据库 UUID，也不需要编辑 `wrangler.jsonc` 的数据库 ID。
+仓库已经声明 D1 binding，Cloudflare 会自动创建资源并写入实际绑定。
 
 ## 填写私有网站与监控配置
 
@@ -89,7 +89,7 @@ Cloudflare 会在你的 GitHub 账户中创建一份独立仓库副本、配置 
 5. 保存两个 Secret；
 6. 在 **Deployments** 页面重新运行生产部署。
 
-两个 Secret 必须同时存在。生产部署不会使用 example 配置作为后备，避免把示例网站意外部署上线。Secret 的值不会写入 GitHub 仓库，也不会在 Cloudflare 保存后再次显示；修改时需要粘贴一份新的完整 YAML。
+两个 Secret 必须同时存在，生产部署只接受这两份私有配置。Secret 的值保存在 Cloudflare 中并以加密方式处理；修改时需要粘贴一份新的完整 YAML。
 
 YAML 只能使用空格缩进，不能使用 Tab。布尔值写成 `true` 或 `false`。
 
@@ -167,20 +167,22 @@ monitors:
 在 `STATUS_SITE_CONFIG_YAML` 中修改：
 
 ```yaml
-theme: default
+theme: stardew-inspired
 colorMode: system
 ```
 
 保存 Secret 并重新部署即可。`colorMode: system` 默认跟随设备，用户仍可在页面上切换明暗模式，选择会保存在浏览器中。
 
 主题在构建时确定，因此修改主题后需要重新部署。公开页面没有主题管理后台。
+Cloudflare 网页部署读取的是 `STATUS_SITE_CONFIG_YAML` Build Secret；修改本地
+`config/site.yaml` 或仓库中的 example 文件不会替换已经保存的 Build Secret。构建日志会输出实际采用的主题和监控数量，但不会输出目标 URL 或其他私有配置。
 
 ## 修改检查频率
 
-默认每分钟检查一次。检查频率属于公开的部署设置，不包含敏感信息，可以直接通过 GitHub 网页修改 Fork 仓库中的 `wrangler.jsonc`：
+默认每 5 分钟检查一次。检查频率属于公开的部署设置，不包含敏感信息，可以直接通过 GitHub 网页修改 Fork 仓库中的 `wrangler.jsonc`：
 
 ```json
-"triggers": { "crons": ["* * * * *"] }
+"triggers": { "crons": ["*/5 * * * *"] }
 ```
 
 可用值：
@@ -195,26 +197,26 @@ colorMode: system
 
 ## D1 自动创建与初始化
 
-项目的 `wrangler.jsonc` 只声明名为 `DB` 的 D1 binding，不包含任何账户专属 UUID。Cloudflare 部署时会：
+项目的 `wrangler.jsonc` 声明名为 `DB` 的 D1 binding。Cloudflare 部署时会：
 
 1. 自动创建或选择 `status-page` D1；
 2. 将它绑定为 `DB`；
 3. 部署 Worker；
 4. 自动执行 `database/schema.sql` 创建所需表和索引。
 
-建表语句使用 `IF NOT EXISTS`，因此每次生产部署重复执行是安全的。用户不需要进入 D1 Console，也不需要运行 Wrangler。
+建表语句使用 `IF NOT EXISTS`，因此每次生产部署重复执行是安全的。
 
-D1 只保存：
+D1 保存：
 
 - 每个监控项的一行当前状态；
 - 每天、每个检查位置的一行聚合数据；
 - 故障开始、升级和恢复时间。
 
-不会为每分钟检查保存一行原始结果。每天 UTC 00:00 会清理超过 `historyDays` 的历史聚合和已经恢复的旧故障，仍未恢复的故障会继续保留。
+每天 UTC 00:00 会清理超过 `historyDays` 的历史聚合和已经恢复的故障，仍未恢复的故障会继续保留。
 
 ## 配置 Telegram Bot 提醒
 
-Telegram 是可选功能，不配置时会自动跳过。
+Telegram 是可选通知渠道。
 
 ### 1. 创建 Bot
 
@@ -277,7 +279,7 @@ https://api.telegram.org/bot<BOT_TOKEN>/getUpdates
 - 每次 push 和 pull request 自动运行完整检查；
 - 在 GitHub Actions 网页手动运行备用生产部署。
 
-只使用 Cloudflare Connect Repo 时，不需要配置 GitHub 部署凭据。若需要备用入口，在 GitHub 仓库的 **Settings → Secrets and variables → Actions** 中添加：
+Cloudflare Connect Repo 是主部署入口。若需要 GitHub Actions 备用入口，在 GitHub 仓库的 **Settings → Secrets and variables → Actions** 中添加：
 
 | GitHub Secret                 | 用途                                           |
 | ----------------------------- | ---------------------------------------------- |
@@ -306,9 +308,11 @@ Cron 配置更新最多可能需要约 15 分钟传播。刚部署时短暂显�
 
 在 Cloudflare Worker 中打开 **Settings → Domains & Routes → Add → Custom Domain**，填写状态页域名。随后把 `STATUS_SITE_CONFIG_YAML` 中的 `url` 改为最终地址并重新部署。
 
+如果该域名仍绑定旧 Worker 或 Pages 项目，先从旧项目移除该 Custom Domain 或 Route，再把它添加到新版 Worker。完成后访问 `/api/status` 应返回 JSON；若仍显示旧页面，或返回 `could not find api/status/index.html in your content namespace`，说明请求尚未到达新版 Worker。
+
 ## 可选：本地开发
 
-只有准备修改项目代码时才需要本地环境。普通部署用户可以完全跳过本节。
+本地开发环境用于修改和验证项目代码。
 
 ```bash
 npm install

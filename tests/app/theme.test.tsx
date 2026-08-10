@@ -235,22 +235,23 @@ describe("default theme stylesheet behavior", () => {
     theme.element.remove();
   });
 
-  it("contains 24px history targets in a local horizontal scroller", () => {
+  it("fits history across the full card width without a local horizontal scroller", () => {
     const base = parsedStyleRules(readFileSync("src/app/styles/base.css", "utf8"));
-    const scroller = ruleFor(base.rules, ".history-strip__scroller").style;
-    const track = ruleFor(base.rules, ".history-strip__track").style;
+    const source = readFileSync("src/app/styles/base.css", "utf8");
+    const list = ruleFor(base.rules, ".history-strip__days").style;
     const item = ruleFor(base.rules, ".history-strip__days li").style;
     const button = ruleFor(base.rules, ".history-day").style;
     const bar = ruleFor(base.rules, ".history-day > span").style;
 
-    expect(scroller.overflowX).toBe("auto");
-    expect(scroller.maxWidth).toBe("100%");
-    expect(track.width).toBe("max-content");
-    expect(track.minWidth).toBe("100%");
-    expect(item.flex).toBe("0 0 24px");
-    expect(button.minInlineSize).toBe("24px");
-    expect(button.blockSize).toBe("24px");
-    expect(bar.width).toBe("4px");
+    expect(list.display).toBe("grid");
+    expect(list.gap).toBe("2px");
+    expect(item.minWidth).toBe("0px");
+    expect(button.minInlineSize).toBe("0px");
+    expect(button.blockSize).toBe("28px");
+    expect(bar.width).toBe("100%");
+    expect(bar.height).toBe("18px");
+    expect(source).not.toContain("history-strip__scroller");
+    expect(source).not.toContain("history-strip__track");
 
     base.element.remove();
   });

@@ -291,6 +291,7 @@ FORM: Approved composition C, a single-column broad-card feed with no generated 
 }
 
 .theme-default .service-card:has(.history-detail),
+.theme-default .service-card:has(.service-details[data-open="true"]),
 .theme-default .service-card:focus-within {
   z-index: 2;
 }
@@ -332,6 +333,34 @@ FORM: Approved composition C, a single-column broad-card feed with no generated 
   max-width: 68ch;
   color: var(--muted);
   font-size: 0.875rem;
+}
+
+.theme-default .service-details__trigger {
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--canvas);
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  transition:
+    border-color var(--motion-standard),
+    background var(--motion-standard),
+    color var(--motion-standard);
+}
+
+.theme-default .service-details__trigger:hover,
+.theme-default .service-details__trigger[aria-expanded="true"] {
+  border-color: var(--focus-accent);
+  background: var(--surface);
+  color: var(--focus-accent);
+}
+
+.theme-default .service-card__metadata {
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--elevated-shadow);
 }
 
 .theme-default .status-badge {
@@ -378,7 +407,7 @@ FORM: Approved composition C, a single-column broad-card feed with no generated 
 }
 
 .theme-default .history-day > span {
-  border-radius: 2px;
+  border-radius: 4px;
   background: var(--status-unknown-base);
   transform-origin: bottom;
   transition: transform var(--motion-standard);

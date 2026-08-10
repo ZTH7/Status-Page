@@ -205,6 +205,18 @@ describe("App ready content", () => {
       }),
     ).toHaveTextContent("👩🏽‍💻");
 
+    const linkableDetailsTrigger = within(linkable).getByRole("button", {
+      name: "Details for Public API",
+    });
+    const nonLinkableDetailsTrigger = within(nonLinkable).getByRole("button", {
+      name: "Details for 👩🏽‍💻 Tools",
+    });
+    expect(linkableDetailsTrigger).toHaveTextContent("?");
+    expect(linkableDetailsTrigger).toHaveAttribute("aria-expanded", "false");
+    expect(linkable).not.toHaveTextContent("842 ms");
+
+    fireEvent.mouseEnter(linkableDetailsTrigger.closest(".service-details")!);
+    expect(linkableDetailsTrigger).toHaveAttribute("aria-expanded", "true");
     expect(linkable).toHaveTextContent("842 ms");
     expect(linkable).toHaveTextContent("HTTP status");
     expect(linkable).toHaveTextContent("503");
@@ -213,12 +225,37 @@ describe("App ready content", () => {
       statusResponseFixture.site.labels.lastChecked,
     ).nextElementSibling;
     expect(lastCheckedValue?.querySelector("time")).toHaveAttribute("datetime");
+
+    fireEvent.mouseEnter(nonLinkableDetailsTrigger.closest(".service-details")!);
     expect(within(nonLinkable).getAllByText(statusResponseFixture.site.labels.noData)).toHaveLength(
       4,
     );
     expect(nonLinkable).not.toHaveTextContent("https://");
     expect(document.body).not.toHaveTextContent("statusText");
     expect(document.body).not.toHaveTextContent(/uptime/i);
+  });
+
+  it("keeps service details available by hover, keyboard focus, click, and Escape", async () => {
+    const user = userEvent.setup();
+    await renderReady();
+    const article = monitorArticle("Public API");
+    const trigger = within(article).getByRole("button", { name: "Details for Public API" });
+    const disclosure = trigger.closest(".service-details")!;
+
+    fireEvent.mouseEnter(disclosure);
+    expect(within(article).getByLabelText("Public API details")).toBeInTheDocument();
+    fireEvent.mouseLeave(disclosure);
+    expect(within(article).queryByLabelText("Public API details")).not.toBeInTheDocument();
+
+    trigger.focus();
+    fireEvent.focus(trigger);
+    expect(within(article).getByLabelText("Public API details")).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    expect(within(article).queryByLabelText("Public API details")).not.toBeInTheDocument();
+
+    await user.click(trigger);
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+    expect(within(article).getByLabelText("Public API details")).toBeInTheDocument();
   });
 
   it("shows received incident order, severity, timing, duration, recovery, escalation, and ongoing state", async () => {

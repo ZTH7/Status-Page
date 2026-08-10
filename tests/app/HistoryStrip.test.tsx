@@ -41,8 +41,9 @@ describe("HistoryStrip", () => {
     const list = screen.getByRole("list", { name: "90-day history" });
     const buttons = within(list).getAllByRole("button");
     expect(buttons).toHaveLength(90);
-    expect(list.closest(".history-strip__track")).not.toBeNull();
-    expect(list.closest(".history-strip__scroller")).not.toBeNull();
+    expect(list).toHaveStyle({ gridTemplateColumns: "repeat(90, minmax(0, 1fr))" });
+    expect(list.closest(".history-strip__track")).toBeNull();
+    expect(list.closest(".history-strip__scroller")).toBeNull();
     expect(
       buttons.every((button) => button.firstElementChild?.getAttribute("aria-hidden") === "true"),
     ).toBe(true);

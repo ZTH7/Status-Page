@@ -33,7 +33,9 @@
 .color-mode-toggle,
 .service-search,
 .section-heading,
-.service-card__name-row,
+.service-card__identity,
+.service-card__headline,
+.service-details__trigger,
 .status-badge,
 .history-strip__range,
 .history-detail__summary {
@@ -130,30 +132,36 @@
   position: relative;
   z-index: 0;
   display: grid;
-  grid-template-columns: minmax(12rem, 1fr) minmax(10rem, auto) minmax(22rem, 2fr);
-  align-items: center;
-  gap: 24px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
   min-width: 0;
 }
 
 .service-card__identity,
 .service-card__title-block,
-.service-card__metadata,
 .history-strip,
 .incident-list__identity,
 .incident-list__timeline {
   min-width: 0;
 }
 
-.service-card__identity,
+.service-card__identity {
+  position: relative;
+  align-items: flex-start;
+  gap: 12px;
+}
+
 .service-card__title-block {
+  flex: 1 1 auto;
   display: grid;
+  align-self: center;
   gap: 8px;
 }
 
-.service-card__name-row {
+.service-card__headline {
   min-width: 0;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 6px 8px;
 }
 
 .service-card__title-block h3,
@@ -177,9 +185,27 @@
   place-items: center;
 }
 
+.service-details {
+  position: static;
+  flex: 0 0 auto;
+}
+
+.service-details__trigger {
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  cursor: help;
+}
+
 .service-card__metadata {
+  position: absolute;
+  z-index: 4;
+  inset-block-start: calc(100% + 8px);
+  inset-inline-start: 0;
+  width: min(22rem, 100%);
   display: grid;
-  grid-template-columns: repeat(2, minmax(7rem, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px 16px;
 }
 
@@ -195,45 +221,32 @@
 }
 
 .history-strip__days {
-  display: flex;
+  display: grid;
   align-items: stretch;
-  gap: 1px;
+  gap: 2px;
 }
 
 .history-strip {
   position: relative;
 }
 
-.history-strip__scroller {
-  max-width: 100%;
-  overflow-x: auto;
-  overscroll-behavior-inline: contain;
-}
-
-.history-strip__track {
-  width: max-content;
-  min-width: 100%;
-}
-
 .history-strip__days li {
   min-width: 0;
-  flex: 0 0 24px;
 }
 
 .history-day {
   width: 100%;
-  min-inline-size: 24px;
-  block-size: 24px;
+  min-inline-size: 0;
+  block-size: 28px;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   padding: 0;
   cursor: pointer;
 }
 
 .history-day > span {
-  width: 4px;
-  height: 16px;
-  margin-inline: auto;
+  width: 100%;
+  height: 18px;
 }
 
 .history-strip__range {
@@ -298,14 +311,6 @@
 }
 
 @media (max-width: 60rem) {
-  .service-card {
-    grid-template-columns: minmax(12rem, 1fr) minmax(10rem, auto);
-  }
-
-  .history-strip {
-    grid-column: 1 / -1;
-  }
-
   .incident-list__item {
     grid-template-columns: minmax(12rem, 1fr) minmax(20rem, 2fr);
   }
@@ -343,19 +348,17 @@
     text-align: left;
   }
 
-  .service-card,
   .incident-list__item {
     grid-template-columns: minmax(0, 1fr);
     gap: 16px;
   }
 
-  .service-card__metadata,
   .incident-list__timeline {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .history-strip {
-    grid-column: auto;
+  .history-strip__days {
+    gap: 1px;
   }
 
   .site-footer__inner {

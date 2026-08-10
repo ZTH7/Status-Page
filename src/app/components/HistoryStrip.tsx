@@ -90,51 +90,47 @@ export function HistoryStrip({ days, labels }: HistoryStripProps) {
         }
       }}
     >
-      <div className="history-strip__scroller">
-        <div className="history-strip__track">
-          <ol className="history-strip__days" aria-label={`${days.length}-day history`}>
-            {days.map((day, index) => {
-              const selected = selectedIndex === index;
-              return (
-                <li key={`${day.day}-${index}`}>
-                  <button
-                    type="button"
-                    className="history-day"
-                    data-level={day.level}
-                    aria-label={accessibleDayLabel(day, labels)}
-                    aria-expanded={selected}
-                    aria-describedby={selected ? detailId : undefined}
-                    onMouseEnter={() => {
-                      setHoveredIndex(index);
-                      setSelectionSource("hover");
-                    }}
-                    onMouseLeave={() => {
-                      setHoveredIndex(null);
-                      setSelectionSource(
-                        focusedIndex !== null
-                          ? "focus"
-                          : activatedIndex !== null
-                            ? "activate"
-                            : null,
-                      );
-                    }}
-                    onFocus={() => {
-                      setFocusedIndex(index);
-                      setSelectionSource("focus");
-                    }}
-                    onClick={() => {
-                      setActivatedIndex(index);
-                      setSelectionSource("activate");
-                    }}
-                  >
-                    <span aria-hidden="true" />
-                  </button>
-                </li>
-              );
-            })}
-          </ol>
-        </div>
-      </div>
+      <ol
+        className="history-strip__days"
+        aria-label={`${days.length}-day history`}
+        style={{ gridTemplateColumns: `repeat(${Math.max(days.length, 1)}, minmax(0, 1fr))` }}
+      >
+        {days.map((day, index) => {
+          const selected = selectedIndex === index;
+          return (
+            <li key={`${day.day}-${index}`}>
+              <button
+                type="button"
+                className="history-day"
+                data-level={day.level}
+                aria-label={accessibleDayLabel(day, labels)}
+                aria-expanded={selected}
+                aria-describedby={selected ? detailId : undefined}
+                onMouseEnter={() => {
+                  setHoveredIndex(index);
+                  setSelectionSource("hover");
+                }}
+                onMouseLeave={() => {
+                  setHoveredIndex(null);
+                  setSelectionSource(
+                    focusedIndex !== null ? "focus" : activatedIndex !== null ? "activate" : null,
+                  );
+                }}
+                onFocus={() => {
+                  setFocusedIndex(index);
+                  setSelectionSource("focus");
+                }}
+                onClick={() => {
+                  setActivatedIndex(index);
+                  setSelectionSource("activate");
+                }}
+              >
+                <span aria-hidden="true" />
+              </button>
+            </li>
+          );
+        })}
+      </ol>
       <div className="history-strip__range" aria-hidden="true">
         <span>{labels.historyStart.replace("{days}", String(days.length))}</span>
         <span>{labels.today}</span>
