@@ -2,6 +2,7 @@ import { useId, useState } from "react";
 
 import type { PublicLabels } from "../../config/types";
 import type { PublicDay, PublicLevel } from "../../shared/api-types";
+import { formatMilliseconds } from "../lib/format";
 
 interface HistoryStripProps {
   days: PublicDay[];
@@ -29,7 +30,8 @@ function quantity(value: number, singular: string, plural: string): string {
 
 function locationText(day: PublicDay, labels: PublicLabels): string[] {
   return day.locations.map((location) => {
-    const average = location.averageMs === null ? labels.noData : `${location.averageMs} ms`;
+    const average =
+      location.averageMs === null ? labels.noData : formatMilliseconds(location.averageMs);
     return `${location.code} average ${average} from ${quantity(location.checks, "check", "checks")}`;
   });
 }

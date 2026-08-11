@@ -2,7 +2,7 @@ import { useId, useState } from "react";
 
 import type { PublicLabels } from "../../config/types";
 import type { PublicMonitor } from "../../shared/api-types";
-import { formatTimestamp } from "../lib/format";
+import { formatMilliseconds, formatTimestamp } from "../lib/format";
 
 interface ServiceDetailsProps {
   name: string;
@@ -57,7 +57,9 @@ export function ServiceDetails({ name, latest, labels }: ServiceDetailsProps) {
           <div>
             <dt>{labels.responseTime}</dt>
             <dd>
-              {latest?.responseMs === null || !latest ? labels.noData : `${latest.responseMs} ms`}
+              {latest?.responseMs === null || !latest
+                ? labels.noData
+                : formatMilliseconds(latest.responseMs)}
             </dd>
           </div>
           <div>

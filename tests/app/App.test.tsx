@@ -171,6 +171,10 @@ describe("App ready content", () => {
           ...statusResponseFixture.monitors[0]!,
           description: longDescription,
           presentationLogo: "/api-mark.svg",
+          latest: {
+            ...statusResponseFixture.monitors[0]!.latest!,
+            responseMs: 842.126,
+          },
         },
         {
           ...nonLinkableMonitor,
@@ -232,11 +236,11 @@ describe("App ready content", () => {
     expect(headline.children[2]).toHaveClass("status-badge");
     expect(linkableDetailsTrigger).toHaveTextContent("?");
     expect(linkableDetailsTrigger).toHaveAttribute("aria-expanded", "false");
-    expect(linkable).not.toHaveTextContent("842 ms");
+    expect(linkable).not.toHaveTextContent("842.13 ms");
 
     fireEvent.mouseEnter(linkableDetailsTrigger.closest(".service-details")!);
     expect(linkableDetailsTrigger).toHaveAttribute("aria-expanded", "true");
-    expect(linkable).toHaveTextContent("842 ms");
+    expect(linkable).toHaveTextContent("842.13 ms");
     expect(linkable).toHaveTextContent("HTTP status");
     expect(linkable).toHaveTextContent("503");
     expect(linkable).toHaveTextContent("SJC");

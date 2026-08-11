@@ -163,4 +163,28 @@ describe("HistoryStrip", () => {
     expect(detail).toHaveTextContent("0 checks");
     expect(detail).toHaveTextContent("0 failures");
   });
+
+  it("shows latency with no more than two decimal places", async () => {
+    const user = userEvent.setup();
+    render(
+      <HistoryStrip
+        days={[
+          knownDay({
+            locations: [
+              { code: "SJC", averageMs: 120.126, checks: 6 },
+              { code: "LAX", averageMs: 85.5, checks: 4 },
+            ],
+          }),
+        ]}
+        labels={labels}
+      />,
+    );
+
+    const day = screen.getByRole("button", { name: /SJC average 120\.13 ms/ });
+    expect(day).toHaveAccessibleName(/LAX average 85\.5 ms/);
+    await user.click(day);
+    expect(screen.getByRole("region", { name: /history details/i })).toHaveTextContent(
+      "SJC average 120.13 ms",
+    );
+  });
 });
