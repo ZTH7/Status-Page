@@ -164,6 +164,14 @@
   gap: 6px 8px;
 }
 
+.service-card__headline h3 {
+  min-width: 0;
+}
+
+.service-card__headline > .status-badge {
+  margin-inline-start: auto;
+}
+
 .service-card__title-block h3,
 .service-card__identity p {
   overflow-wrap: anywhere;

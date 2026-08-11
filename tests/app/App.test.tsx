@@ -191,12 +191,15 @@ describe("App ready content", () => {
     expect(within(nonLinkable).queryByRole("link", { name: "👩🏽‍💻 Tools" })).not.toBeInTheDocument();
     expect(within(linkable).getByText(longDescription)).toBeInTheDocument();
 
-    const monitorLogo = within(linkable).getByRole("img", {
-      name: "Public API logo",
+    const monitorIcon = within(linkable).getByRole("img", {
+      name: "Public API icon",
     });
     const siteLogo = screen.getByRole("img", { name: "Acme Status logo" });
-    expect(monitorLogo).toHaveAttribute("width", "40");
-    expect(monitorLogo).toHaveAttribute("height", "40");
+    expect(monitorIcon).toHaveAttribute("src", "/api-mark.svg");
+    expect(monitorIcon).toHaveAttribute("width", "40");
+    expect(monitorIcon).toHaveAttribute("height", "40");
+    expect(monitorIcon).toHaveAttribute("decoding", "async");
+    expect(monitorIcon).toHaveAttribute("referrerpolicy", "no-referrer");
     expect(siteLogo).toHaveAttribute("width", "32");
     expect(siteLogo).toHaveAttribute("height", "32");
     expect(
@@ -205,12 +208,28 @@ describe("App ready content", () => {
       }),
     ).toHaveTextContent("👩🏽‍💻");
 
+    fireEvent.error(monitorIcon);
+    const favicon = within(linkable).getByRole("img", { name: "Public API icon" });
+    expect(favicon).toHaveAttribute("src", "https://api.example.test/favicon.ico");
+    fireEvent.error(favicon);
+    expect(
+      within(linkable).queryByRole("img", { name: "Public API icon" }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(linkable).getByRole("img", { name: "Public API fallback mark" }),
+    ).toHaveTextContent("P");
+
     const linkableDetailsTrigger = within(linkable).getByRole("button", {
       name: "Details for Public API",
     });
     const nonLinkableDetailsTrigger = within(nonLinkable).getByRole("button", {
       name: "Details for 👩🏽‍💻 Tools",
     });
+    const headline = linkable.querySelector(".service-card__headline")!;
+    expect(headline.children).toHaveLength(3);
+    expect(headline.children[0]?.tagName).toBe("H3");
+    expect(headline.children[1]).toContainElement(linkableDetailsTrigger);
+    expect(headline.children[2]).toHaveClass("status-badge");
     expect(linkableDetailsTrigger).toHaveTextContent("?");
     expect(linkableDetailsTrigger).toHaveAttribute("aria-expanded", "false");
     expect(linkable).not.toHaveTextContent("842 ms");

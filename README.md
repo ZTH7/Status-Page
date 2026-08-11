@@ -139,21 +139,22 @@ monitors:
 
 每个监控项支持：
 
-| 字段               | 必填 | 说明                                    |
-| ------------------ | ---- | --------------------------------------- |
-| `id`               | 是   | 唯一 ID，只能使用小写字母、数字和连字符 |
-| `name`             | 是   | 页面显示名称                            |
-| `description`      | 否   | 简短说明                                |
-| `url`              | 是   | 需要检查的 HTTP 或 HTTPS 地址           |
-| `method`           | 是   | `GET` 或 `HEAD`                         |
-| `expectStatus`     | 是   | 期望 HTTP 状态码                        |
-| `followRedirect`   | 是   | 是否跟随重定向                          |
-| `linkable`         | 是   | 是否允许公开 API 和卡片链接到目标 URL   |
-| `presentationLogo` | 否   | `public/` 中的服务 Logo 路径            |
-| `timeoutSeconds`   | 否   | 当前监控项的超时覆盖值                  |
-| `thresholds`       | 否   | 当前监控项的阈值覆盖值                  |
+| 字段               | 必填 | 说明                                           |
+| ------------------ | ---- | ---------------------------------------------- |
+| `id`               | 是   | 唯一 ID，只能使用小写字母、数字和连字符        |
+| `name`             | 是   | 页面显示名称                                   |
+| `description`      | 否   | 简短说明                                       |
+| `url`              | 是   | 需要检查的 HTTP 或 HTTPS 地址                  |
+| `method`           | 是   | `GET` 或 `HEAD`                                |
+| `expectStatus`     | 是   | 期望 HTTP 状态码                               |
+| `followRedirect`   | 是   | 是否跟随重定向                                 |
+| `linkable`         | 是   | 是否允许公开 API 和卡片链接到目标 URL          |
+| `presentationLogo` | 否   | `public/` 中的服务图标路径，可覆盖网站 favicon |
+| `timeoutSeconds`   | 否   | 当前监控项的超时覆盖值                         |
+| `thresholds`       | 否   | 当前监控项的阈值覆盖值                         |
 
 `linkable: false` 时目标 URL 不会出现在公开 API 或页面链接中，但仍会被 Worker 用于检查。
+未设置 `presentationLogo` 时，公开可链接的监控会尝试加载目标根域名的 `/favicon.ico`；加载失败或目标不公开时，卡片会显示服务名称的首字符标记。
 
 ## 更换主题与明暗模式
 

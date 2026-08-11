@@ -306,6 +306,15 @@ describe("default theme stylesheet behavior", () => {
 
     base.element.remove();
   });
+
+  it("anchors each service status at the far edge of its headline", () => {
+    const base = parsedStyleRules(readFileSync("src/app/styles/base.css", "utf8"));
+    const status = ruleFor(base.rules, ".service-card__headline > .status-badge").style;
+
+    expect(status.marginInlineStart).toBe("auto");
+
+    base.element.remove();
+  });
 });
 
 describe("theme manifests and active registry", () => {
