@@ -46,7 +46,7 @@ Status Page 定时检查 HTTP 服务，把当前状态、每日汇总和故障�
 
 Cloudflare 会在你的 GitHub 账户中创建一份独立仓库副本、配置 Workers Builds、创建并绑定 D1，然后部署 Worker。仓库和部署资源都属于你的账户。
 
-首次生产部署必须提供两份私有配置。如果设置向导允许添加 **Build variables and secrets**，请直接按下一节填写。如果首次构建先开始并提示缺少 `STATUS_SITE_CONFIG_YAML` 与 `STATUS_MONITORS_CONFIG_YAML`，这是预期的安全保护：添加两个 Secret 后在 Cloudflare 的部署页面点击 **Retry deployment** 即可。
+首次生产部署必须提供两份私有配置。如果设置向导允许添加 **Build variables and secrets**，请直接按下一节填写。如果首次构建先开始并提示缺少 `STATUS_SITE_CONFIG_JSON` 与 `STATUS_MONITORS_CONFIG_JSON`，这是预期的安全保护：添加两个 Secret 后在 Cloudflare 的部署页面点击 **Retry deployment** 即可。
 
 ### 方式二：保留 GitHub Fork 关系
 
@@ -77,8 +77,8 @@ Cloudflare 会在你的 GitHub 账户中创建一份独立仓库副本、配置 
 
 | Secret 名称                   | 内容                                                                    |
 | ----------------------------- | ----------------------------------------------------------------------- |
-| `STATUS_SITE_CONFIG_YAML`     | [config/site.example.yaml](config/site.example.yaml) 的完整内容         |
-| `STATUS_MONITORS_CONFIG_YAML` | [config/monitors.example.yaml](config/monitors.example.yaml) 的完整内容 |
+| `STATUS_SITE_CONFIG_JSON`     | [config/site.example.json](config/site.example.json) 的完整内容         |
+| `STATUS_MONITORS_CONFIG_JSON` | [config/monitors.example.json](config/monitors.example.json) 的完整内容 |
 
 操作方法：
 
@@ -89,13 +89,13 @@ Cloudflare 会在你的 GitHub 账户中创建一份独立仓库副本、配置 
 5. 保存两个 Secret；
 6. 在 **Deployments** 页面重新运行生产部署。
 
-两个 Secret 必须同时存在，生产部署只接受这两份私有配置。Secret 的值保存在 Cloudflare 中并以加密方式处理；修改时需要粘贴一份新的完整 YAML。
+两个 Secret 必须同时存在，生产部署只接受这两份私有配置。Secret 的值保存在 Cloudflare 中并以加密方式处理；修改时需要粘贴一份新的完整 JSON。
 
-YAML 只能使用空格缩进，不能使用 Tab。布尔值写成 `true` 或 `false`。
+JSON 不依赖换行或缩进。Cloudflare 输入框若只接受单行，可直接删除 example 文件中的换行和缩进后粘贴；不要删除引号、逗号、冒号或括号。布尔值写成不带引号的 `true` 或 `false`，键名和字符串必须使用双引号。
 
 ### 网站配置
 
-`STATUS_SITE_CONFIG_YAML` 的主要字段：
+`STATUS_SITE_CONFIG_JSON` 的主要字段：
 
 | 字段                    | 说明                                       |
 | ----------------------- | ------------------------------------------ |
@@ -112,29 +112,37 @@ YAML 只能使用空格缩进，不能使用 Tab。布尔值写成 `true` 或 `f
 
 默认阈值：
 
-```yaml
-thresholds:
-  degradedAfterFailures: 2
-  outageAfterMinutes: 60
-  recoverAfterSuccesses: 2
+```json
+{
+  "thresholds": {
+    "degradedAfterFailures": 2,
+    "outageAfterMinutes": 60,
+    "recoverAfterSuccesses": 2
+  }
+}
 ```
 
 其中 `outageAfterMinutes` 按首次失败后的实际分钟计算，与检查频率无关。
 
 ### 监控项配置
 
-`STATUS_MONITORS_CONFIG_YAML` 示例：
+`STATUS_MONITORS_CONFIG_JSON` 示例：
 
-```yaml
-monitors:
-  - id: website
-    name: Website
-    description: Public website
-    url: https://www.example.com/
-    method: GET
-    expectStatus: 200
-    followRedirect: false
-    linkable: true
+```json
+{
+  "monitors": [
+    {
+      "id": "website",
+      "name": "Website",
+      "description": "Public website",
+      "url": "https://www.example.com/",
+      "method": "GET",
+      "expectStatus": 200,
+      "followRedirect": false,
+      "linkable": true
+    }
+  ]
+}
 ```
 
 每个监控项支持：
@@ -165,18 +173,20 @@ monitors:
 | `default`          | 简约卡片主题   |
 | `stardew-inspired` | 星露谷风格主题 |
 
-在 `STATUS_SITE_CONFIG_YAML` 中修改：
+在 `STATUS_SITE_CONFIG_JSON` 中修改：
 
-```yaml
-theme: stardew-inspired
-colorMode: system
+```json
+{
+  "theme": "stardew-inspired",
+  "colorMode": "system"
+}
 ```
 
 保存 Secret 并重新部署即可。`colorMode: system` 默认跟随设备，用户仍可在页面上切换明暗模式，选择会保存在浏览器中。
 
 主题在构建时确定，因此修改主题后需要重新部署。公开页面没有主题管理后台。
-Cloudflare 网页部署读取的是 `STATUS_SITE_CONFIG_YAML` Build Secret；修改本地
-`config/site.yaml` 或仓库中的 example 文件不会替换已经保存的 Build Secret。构建日志会输出实际采用的主题和监控数量，但不会输出目标 URL 或其他私有配置。
+Cloudflare 网页部署读取的是 `STATUS_SITE_CONFIG_JSON` Build Secret；修改本地
+`config/site.json` 或仓库中的 example 文件不会替换已经保存的 Build Secret。构建日志会输出实际采用的主题和监控数量，但不会输出目标 URL 或其他私有配置。
 
 ## 修改检查频率
 
@@ -259,7 +269,7 @@ https://api.telegram.org/bot<BOT_TOKEN>/getUpdates
 | `SECRET_SLACK_WEBHOOK_URL`   | Slack Incoming Webhook |
 | `SECRET_DISCORD_WEBHOOK_URL` | Discord Webhook        |
 
-这些是 Worker 运行时 Secret，与网站和监控 YAML 使用的 Build Secret 不同。
+这些是 Worker 运行时 Secret，与网站和监控 JSON 使用的 Build Secret 不同。
 
 ## 修改配置与重新部署
 
@@ -267,7 +277,7 @@ https://api.telegram.org/bot<BOT_TOKEN>/getUpdates
 
 1. 打开 Cloudflare Worker；
 2. 进入 **Settings → Builds → Build variables and secrets**；
-3. 替换对应 YAML Secret 的完整内容；
+3. 替换对应 JSON Secret 的完整内容；
 4. 打开 **Deployments**；
 5. 重新运行最新生产部署。
 
@@ -284,8 +294,8 @@ Cloudflare Connect Repo 是主部署入口。若需要 GitHub Actions 备用入�
 
 | GitHub Secret                 | 用途                                           |
 | ----------------------------- | ---------------------------------------------- |
-| `STATUS_SITE_CONFIG_YAML`     | 完整网站 YAML                                  |
-| `STATUS_MONITORS_CONFIG_YAML` | 完整监控项 YAML                                |
+| `STATUS_SITE_CONFIG_JSON`     | 完整网站 JSON                                  |
+| `STATUS_MONITORS_CONFIG_JSON` | 完整监控项 JSON                                |
 | `CLOUDFLARE_API_TOKEN`        | Worker 部署与 Account D1 Edit 权限的限定 Token |
 | `CLOUDFLARE_ACCOUNT_ID`       | Cloudflare Account ID                          |
 
@@ -307,7 +317,7 @@ Cron 配置更新最多可能需要约 15 分钟传播。刚部署时短暂显�
 
 ## 自定义域名
 
-在 Cloudflare Worker 中打开 **Settings → Domains & Routes → Add → Custom Domain**，填写状态页域名。随后把 `STATUS_SITE_CONFIG_YAML` 中的 `url` 改为最终地址并重新部署。
+在 Cloudflare Worker 中打开 **Settings → Domains & Routes → Add → Custom Domain**，填写状态页域名。随后把 `STATUS_SITE_CONFIG_JSON` 中的 `url` 改为最终地址并重新部署。
 
 如果该域名仍绑定旧 Worker 或 Pages 项目，先从旧项目移除该 Custom Domain 或 Route，再把它添加到新版 Worker。完成后访问 `/api/status` 应返回 JSON；若仍显示旧页面，或返回 `could not find api/status/index.html in your content namespace`，说明请求尚未到达新版 Worker。
 
@@ -317,8 +327,8 @@ Cron 配置更新最多可能需要约 15 分钟传播。刚部署时短暂显�
 
 ```bash
 npm install
-cp config/site.example.yaml config/site.yaml
-cp config/monitors.example.yaml config/monitors.yaml
+cp config/site.example.json config/site.json
+cp config/monitors.example.json config/monitors.json
 npm run db:init:local
 npm run dev
 ```

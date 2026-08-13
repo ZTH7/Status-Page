@@ -1,0 +1,14 @@
+{
+  "monitors": [
+    {
+      "id": "website",
+      "name": "Website",
+      "description": "Public website",
+      "url": "https://www.example.com/",
+      "method": "GET",
+      "expectStatus": 200,
+      "followRedirect": false,
+      "linkable": true
+    }
+  ]
+}

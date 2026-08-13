@@ -2,7 +2,6 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
-import { stringify } from "yaml";
 import { describe, expect, it } from "vitest";
 
 import { parseConfigSources } from "../../src/config/schema";
@@ -61,8 +60,8 @@ function sources(
   const assets = new Set(overrides.assets ?? ["logo.svg"]);
 
   return {
-    siteSource: stringify({ ...site, ...overrides.site }),
-    monitorsSource: stringify({ monitors: overrides.monitors ?? [monitor] }),
+    siteSource: JSON.stringify({ ...site, ...overrides.site }),
+    monitorsSource: JSON.stringify({ monitors: overrides.monitors ?? [monitor] }),
     wranglerConfig: {
       triggers: { crons: overrides.crons ?? ["* * * * *"] },
     },
@@ -90,8 +89,8 @@ function generatorEnvironment(
 ): NodeJS.ProcessEnv {
   return {
     ...process.env,
-    STATUS_SITE_CONFIG_YAML: stringify({ ...site, ...siteOverrides }),
-    STATUS_MONITORS_CONFIG_YAML: stringify({ monitors }),
+    STATUS_SITE_CONFIG_JSON: JSON.stringify({ ...site, ...siteOverrides }),
+    STATUS_MONITORS_CONFIG_JSON: JSON.stringify({ monitors }),
   };
 }
 
@@ -138,8 +137,8 @@ describe("public branding and deployment entrypoint", () => {
     expect(wranglerConfig).toContain('"global_fetch_strictly_public"');
     expect(wranglerConfig).toContain('"*/5 * * * *"');
     expect(wranglerConfig).not.toContain('"database_id"');
-    expect(deployWorkflow).toContain("STATUS_SITE_CONFIG_YAML");
-    expect(deployWorkflow).toContain("STATUS_MONITORS_CONFIG_YAML");
+    expect(deployWorkflow).toContain("STATUS_SITE_CONFIG_JSON");
+    expect(deployWorkflow).toContain("STATUS_MONITORS_CONFIG_JSON");
     expect(deployWorkflow).toContain("npm run build");
     expect(deployWorkflow).toContain("d1 execute DB --remote --file database/schema.sql --yes");
     expect(`${wranglerConfig}${deployWorkflow}`).not.toMatch(/cfstatuspage/i);
@@ -147,6 +146,23 @@ describe("public branding and deployment entrypoint", () => {
 });
 
 describe("parseConfigSources", () => {
+  it("accepts compact single-line JSON configuration", () => {
+    const compactSources = sources();
+
+    expect(compactSources.siteSource).not.toContain("\n");
+    expect(compactSources.monitorsSource).not.toContain("\n");
+    expect(parseConfigSources(compactSources).monitors).toHaveLength(1);
+  });
+
+  it("rejects non-JSON configuration", () => {
+    expect(() =>
+      parseConfigSources({
+        ...sources(),
+        siteSource: "title: Status Page",
+      }),
+    ).toThrow("Site configuration must be valid JSON");
+  });
+
   it("normalizes omitted site and monitor defaults", () => {
     expect(parseConfigSources(sources())).toEqual({
       site: {
@@ -235,7 +251,7 @@ describe("parseConfigSources", () => {
 });
 
 describe("config generator", () => {
-  it("uses injected private YAML and emits deterministic public artifacts without monitor targets", () => {
+  it("uses injected private JSON and emits deterministic public artifacts without monitor targets", () => {
     runConfigGenerator();
     const firstRun = [
       readFileSync("src/generated/config.ts", "utf8"),
@@ -276,8 +292,8 @@ describe("config generator", () => {
     expect(() =>
       runConfigGenerator({
         ...process.env,
-        STATUS_SITE_CONFIG_YAML: stringify(site),
-        STATUS_MONITORS_CONFIG_YAML: "",
+        STATUS_SITE_CONFIG_JSON: JSON.stringify(site),
+        STATUS_MONITORS_CONFIG_JSON: "",
       }),
     ).toThrow();
   });

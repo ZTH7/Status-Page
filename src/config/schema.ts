@@ -1,4 +1,3 @@
-import { parse as parseYaml } from "yaml";
 import { z } from "zod";
 
 import {
@@ -184,9 +183,19 @@ function normalizeMonitorThresholds(
   return normalized;
 }
 
+function parseJson(source: string, name: string): unknown {
+  try {
+    return JSON.parse(source);
+  } catch {
+    throw new Error(`${name} configuration must be valid JSON`);
+  }
+}
+
 export function parseConfigSources(input: ConfigSources): AppConfig {
-  const rawSite = siteSchema.parse(parseYaml(input.siteSource));
-  const rawMonitors = monitorsSourceSchema.parse(parseYaml(input.monitorsSource)).monitors;
+  const rawSite = siteSchema.parse(parseJson(input.siteSource, "Site"));
+  const rawMonitors = monitorsSourceSchema.parse(
+    parseJson(input.monitorsSource, "Monitor"),
+  ).monitors;
 
   if (!isHttpUrl(rawSite.url)) {
     throw new Error("Site URL must use HTTP(S)");

@@ -20,8 +20,8 @@ import type {
 const rootDirectory = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const publicDirectory = resolve(rootDirectory, "public");
 const realPublicDirectory = realpathSync(publicDirectory);
-const siteConfigVariable = "STATUS_SITE_CONFIG_YAML";
-const monitorsConfigVariable = "STATUS_MONITORS_CONFIG_YAML";
+const siteConfigVariable = "STATUS_SITE_CONFIG_JSON";
+const monitorsConfigVariable = "STATUS_MONITORS_CONFIG_JSON";
 const requirePrivateConfig = process.argv.includes("--require-private");
 const useExampleConfig = process.argv.includes("--example");
 
@@ -37,8 +37,8 @@ function nonEmptyEnvironmentValue(name: string): string | undefined {
 function configSources(): { siteSource: string; monitorsSource: string } {
   if (useExampleConfig) {
     return {
-      siteSource: readProjectFile("config/site.example.yaml"),
-      monitorsSource: readProjectFile("config/monitors.example.yaml"),
+      siteSource: readProjectFile("config/site.example.json"),
+      monitorsSource: readProjectFile("config/monitors.example.json"),
     };
   }
 
@@ -53,8 +53,8 @@ function configSources(): { siteSource: string; monitorsSource: string } {
     return { siteSource: siteFromEnvironment, monitorsSource: monitorsFromEnvironment };
   }
 
-  const localSitePath = "config/site.yaml";
-  const localMonitorsPath = "config/monitors.yaml";
+  const localSitePath = "config/site.json";
+  const localMonitorsPath = "config/monitors.json";
   const hasLocalSite = existsSync(resolve(rootDirectory, localSitePath));
   const hasLocalMonitors = existsSync(resolve(rootDirectory, localMonitorsPath));
   if (hasLocalSite || hasLocalMonitors) {
@@ -74,8 +74,8 @@ function configSources(): { siteSource: string; monitorsSource: string } {
   }
 
   return {
-    siteSource: readProjectFile("config/site.example.yaml"),
-    monitorsSource: readProjectFile("config/monitors.example.yaml"),
+    siteSource: readProjectFile("config/site.example.json"),
+    monitorsSource: readProjectFile("config/monitors.example.json"),
   };
 }
 

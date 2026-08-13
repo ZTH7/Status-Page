@@ -36,8 +36,8 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     env:
-      STATUS_SITE_CONFIG_YAML: ${{ secrets.STATUS_SITE_CONFIG_YAML }}
-      STATUS_MONITORS_CONFIG_YAML: ${{ secrets.STATUS_MONITORS_CONFIG_YAML }}
+      STATUS_SITE_CONFIG_JSON: ${{ secrets.STATUS_SITE_CONFIG_JSON }}
+      STATUS_MONITORS_CONFIG_JSON: ${{ secrets.STATUS_MONITORS_CONFIG_JSON }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -51,8 +51,8 @@ jobs:
       - name: Require private deployment configuration
         shell: bash
         run: |
-          if [[ -z "$STATUS_SITE_CONFIG_YAML" || -z "$STATUS_MONITORS_CONFIG_YAML" ]]; then
-            echo "STATUS_SITE_CONFIG_YAML and STATUS_MONITORS_CONFIG_YAML are required."
+          if [[ -z "$STATUS_SITE_CONFIG_JSON" || -z "$STATUS_MONITORS_CONFIG_JSON" ]]; then
+            echo "STATUS_SITE_CONFIG_JSON and STATUS_MONITORS_CONFIG_JSON are required."
             exit 1
           fi
       - name: Build with private configuration
